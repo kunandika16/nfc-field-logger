@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/scan_log.dart';
 import '../services/nfc_service.dart';
+import 'settings_screen.dart';
 import '../services/location_service.dart';
 import '../services/database_helper.dart';
 import '../services/sync_service.dart';
@@ -23,6 +23,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   bool _isScanning = false;
   bool _nfcAvailable = false;
   ScanLog? _lastScan;
+  int _totalScans = 0;
+  int _unsyncedCount = 0;
+  int _syncedCount = 0;
   
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -33,6 +36,17 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     _initializeNfc();
     _initializeAnimation();
     _syncService.initialize();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final total = await _dbHelper.getTotalScanCount();
+    final unsynced = await _dbHelper.getUnsyncedCount();
+    setState(() {
+      _totalScans = total;
+      _unsyncedCount = unsynced;
+      _syncedCount = total - unsynced;
+    });
   }
 
   void _initializeAnimation() {
@@ -98,6 +112,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
 
       _showSnackBar('Saved to log successfully');
 
+      // Reload stats
+      _loadStats();
+
       // Auto-sync if online
       _syncService.autoSync();
     } catch (e) {
@@ -150,153 +167,220 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Chip(
-              label: Text(_getSyncStatusText()),
-              avatar: Icon(
-                Icons.circle,
-                size: 12,
-                color: AppTheme.getStatusColor(_getSyncStatusText()),
-              ),
-              backgroundColor: AppTheme.cardBackground,
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: AppTheme.lightBackground,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingLarge),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Offline banner
-              if (_syncService.status == SyncStatus.offline)
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingMedium),
-                  margin: const EdgeInsets.only(bottom: AppTheme.spacingLarge),
-                  decoration: BoxDecoration(
-                    color: AppTheme.warningOrange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(color: AppTheme.warningOrange),
+              // Header with title and status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Scan',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: AppTheme.textDark,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  child: Row(
+                  Row(
                     children: [
-                      Icon(Icons.wifi_off, color: AppTheme.warningOrange),
-                      const SizedBox(width: AppTheme.spacingMedium),
-                      Expanded(
-                        child: Text(
-                          'Offline mode – data will auto-sync when online',
-                          style: TextStyle(color: AppTheme.textPrimary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Main scan card
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingLarge),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.successGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // NFC Icon with animation
-                        AnimatedBuilder(
-                          animation: _scaleAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _isScanning ? _scaleAnimation.value : 1.0,
-                              child: Icon(
-                                Icons.nfc,
-                                size: 120,
-                                color: _isScanning 
-                                    ? AppTheme.primaryBlue 
-                                    : AppTheme.textSecondary,
-                              ),
-                            );
-                          },
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: AppTheme.successGreen,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-
-                        const SizedBox(height: AppTheme.spacingLarge),
-
-                        // Scan result or instruction
-                        if (_lastScan != null) ...[
-                          Text(
-                            'Last Scan Result',
-                            style: Theme.of(context).textTheme.headlineSmall,
+                        const SizedBox(width: 6),
+                        Text(
+                          _getSyncStatusText(),
+                          style: TextStyle(
+                            color: AppTheme.successGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: AppTheme.spacingMedium),
-                          
-                          // UID
-                          Text(
-                            _lastScan!.uid,
-                            style: AppTheme.uidTextStyle,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: AppTheme.spacingMedium),
-
-                          // Timestamp
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.access_time, size: 18, color: AppTheme.textSecondary),
-                              const SizedBox(width: AppTheme.spacingSmall),
-                              Text(
-                                DateFormat('MMM dd, yyyy • HH:mm:ss').format(_lastScan!.timestamp),
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppTheme.spacingSmall),
-
-                          // Location
-                          if (_lastScan!.city != null)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.location_on, size: 18, color: AppTheme.textSecondary),
-                                const SizedBox(width: AppTheme.spacingSmall),
-                                Text(
-                                  _lastScan!.city!,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                          const SizedBox(height: AppTheme.spacingSmall),
-
-                          // Coordinates
-                          if (_lastScan!.latitude != null && _lastScan!.longitude != null)
-                            Text(
-                              _lastScan!.formattedCoordinates,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                        ] else ...[
-                          Text(
-                            _isScanning ? 'Hold your device near an NFC card' : 'Tap the button below to scan',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          ).then((_) => _loadStats());
+                        },
+                        icon: const Icon(Icons.settings_outlined),
+                        color: AppTheme.textDark,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppTheme.spacingLarge),
+
+              // Main scan card
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingLarge * 2,
+                        vertical: AppTheme.spacingLarge,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // NFC Icon with animation and background
+                          AnimatedBuilder(
+                            animation: _scaleAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _isScanning ? _scaleAnimation.value : 1.0,
+                                child: Container(
+                                  width: 140,
+                                  height: 140,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryBlue.withOpacity(0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.contactless,
+                                      size: 70,
+                                      color: AppTheme.primaryBlue,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: AppTheme.spacingLarge * 1.5),
+
+                          // Instruction text
+                          Text(
+                            _isScanning 
+                                ? 'Hold your device near an NFC card' 
+                                : 'Tap the button below to scan\nan NFC card',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppTheme.textDark,
+                              height: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
+              ),
+
+              const SizedBox(height: AppTheme.spacingLarge),
+
+              // Scan button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isScanning ? null : _startScan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    disabledBackgroundColor: AppTheme.primaryBlue.withOpacity(0.5),
+                  ),
+                  child: Text(
+                    _isScanning ? 'Scanning...' : 'Scan NFC',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: AppTheme.spacingMedium),
+
+              // Stats row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(_totalScans.toString(), 'Total scans'),
+                  ),
+                  const SizedBox(width: AppTheme.spacingMedium),
+                  Expanded(
+                    child: _buildStatItem(_unsyncedCount.toString(), 'Unsynced'),
+                  ),
+                  const SizedBox(width: AppTheme.spacingMedium),
+                  Expanded(
+                    child: _buildStatItem(_syncedCount.toString(), 'Synced'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isScanning ? null : _startScan,
-        icon: Icon(_isScanning ? Icons.stop : Icons.nfc),
-        label: Text(_isScanning ? 'Scanning...' : 'Scan NFC'),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildStatItem(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textDark,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }

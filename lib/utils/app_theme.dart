@@ -10,6 +10,10 @@ class AppTheme {
   static const Color successGreen = Color(0xFF10B981);
   static const Color errorRed = Color(0xFFEF4444);
   static const Color warningOrange = Color(0xFFF59E0B);
+  
+  // Light theme colors
+  static const Color lightBackground = Color(0xFFF5F7FA);
+  static const Color textDark = Color(0xFF1E293B);
 
   // Typography
   static const String fontFamily = 'Roboto';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/scan_log.dart';
+import 'settings_screen.dart';
 import '../services/database_helper.dart';
 import '../services/sync_service.dart';
 import '../services/export_service.dart';
@@ -24,6 +25,8 @@ class _LogScreenState extends State<LogScreen> {
   String? _mostActiveCity;
   bool _isLoading = true;
   bool _showUnsyncedOnly = false;
+  bool _isSyncing = false;
+  bool _isExporting = false;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -79,7 +82,12 @@ class _LogScreenState extends State<LogScreen> {
   }
 
   Future<void> _syncNow() async {
+    setState(() => _isSyncing = true);
+    
     final success = await _syncService.syncLogs();
+    
+    setState(() => _isSyncing = false);
+    
     if (success) {
       _showSnackBar('Sync completed successfully');
       _loadData();
@@ -89,7 +97,12 @@ class _LogScreenState extends State<LogScreen> {
   }
 
   Future<void> _exportCSV() async {
+    setState(() => _isExporting = true);
+    
     final filePath = await _exportService.exportToCSV();
+    
+    setState(() => _isExporting = false);
+    
     if (filePath != null) {
       _showSnackBar('Exported to: $filePath');
     } else {
@@ -177,203 +190,447 @@ class _LogScreenState extends State<LogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Log'),
-      ),
+      backgroundColor: AppTheme.lightBackground,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
-              child: Column(
-                children: [
-                  // Header stats
-                  Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingMedium),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'Total Scans',
-                            _totalScans.toString(),
-                            Icons.grid_on,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header with title and status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Log',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: AppTheme.textDark,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: AppTheme.spacingMedium),
-                        Expanded(
-                          child: _buildStatCard(
-                            'Most Active',
-                            _mostActiveCity ?? 'N/A',
-                            Icons.location_city,
+                          Row(
+                            children: [
+                              Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.successGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.successGreen,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Online',
+                                  style: TextStyle(
+                                    color: AppTheme.successGreen,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Last sync time
-                  if (_syncService.lastSyncTime != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
-                      child: Text(
-                        'Last sync: ${DateFormat('MMM dd • HH:mm').format(_syncService.lastSyncTime!)}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SettingsScreen(),
+                                    ),
+                                  ).then((_) => _loadData());
+                                },
+                                icon: const Icon(Icons.settings_outlined),
+                                color: AppTheme.textDark,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
 
-                  const SizedBox(height: AppTheme.spacingMedium),
+                      const SizedBox(height: AppTheme.spacingLarge),
 
-                  // Filter bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: 'Search UID...',
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        _applyFilters();
-                                      },
-                                    )
-                                  : null,
+                      // Stats cards
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 20,
+                              offset: const Offset(0, 4),
                             ),
-                            onChanged: (value) => _applyFilters(),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildCompactStatCard(
+                                    Icons.download_outlined,
+                                    'Total\nScans',
+                                    _totalScans.toString(),
+                                    AppTheme.primaryBlue,
+                                  ),
+                                ),
+                                const SizedBox(width: AppTheme.spacingMedium),
+                                Expanded(
+                                  child: _buildCompactStatCard(
+                                    Icons.schedule,
+                                    '12:00 PM\nMost Active',
+                                    _mostActiveCity ?? 'N/A',
+                                    Colors.transparent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppTheme.spacingMedium),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildCompactStatCard(
+                                    Icons.location_on_outlined,
+                                    'New\nYork',
+                                    '',
+                                    AppTheme.successGreen.withOpacity(0.2),
+                                  ),
+                                ),
+                                const SizedBox(width: AppTheme.spacingMedium),
+                                Expanded(
+                                  child: _buildCompactStatCard(
+                                    Icons.sync,
+                                    '2m ago\nLast Sync',
+                                    '',
+                                    AppTheme.primaryBlue.withOpacity(0.1),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: AppTheme.spacingLarge),
+
+                      // Search bar
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search UID or location...',
+                            hintStyle: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: AppTheme.textSecondary,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
+                          onChanged: (value) => _applyFilters(),
                         ),
-                        const SizedBox(width: AppTheme.spacingSmall),
-                        FilterChip(
-                          label: const Text('Unsynced'),
-                          selected: _showUnsyncedOnly,
-                          onSelected: (selected) {
-                            setState(() {
-                              _showUnsyncedOnly = selected;
-                            });
-                            _applyFilters();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
 
-                  const SizedBox(height: AppTheme.spacingMedium),
+                      const SizedBox(height: AppTheme.spacingMedium),
 
-                  // Log list
-                  Expanded(
-                    child: _filteredLogs.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
-                            itemCount: _filteredLogs.length,
-                            itemBuilder: (context, index) {
-                              return _buildLogCard(_filteredLogs[index]);
+                      // Filter chip
+                      Row(
+                        children: [
+                          FilterChip(
+                            label: Text(
+                              'Show unsynced only',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _showUnsyncedOnly 
+                                    ? AppTheme.primaryBlue 
+                                    : AppTheme.textSecondary,
+                              ),
+                            ),
+                            selected: _showUnsyncedOnly,
+                            onSelected: (selected) {
+                              setState(() {
+                                _showUnsyncedOnly = selected;
+                              });
+                              _applyFilters();
                             },
+                            backgroundColor: Colors.white,
+                            selectedColor: AppTheme.primaryBlue.withOpacity(0.1),
+                            side: BorderSide(
+                              color: _showUnsyncedOnly 
+                                  ? AppTheme.primaryBlue 
+                                  : Colors.grey.shade300,
+                            ),
                           ),
-                  ),
+                        ],
+                      ),
 
-                  // Bottom actions
-                  Container(
-                    padding: const EdgeInsets.all(AppTheme.spacingMedium),
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardBackground,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _exportCSV,
-                            icon: const Icon(Icons.file_download),
-                            label: const Text('Export CSV'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: BorderSide(color: AppTheme.primaryBlue),
+                      const SizedBox(height: AppTheme.spacingMedium),
+
+                      // Log list
+                      Expanded(
+                        child: _filteredLogs.isEmpty
+                            ? _buildEmptyState()
+                            : ListView.builder(
+                                itemCount: _filteredLogs.length,
+                                itemBuilder: (context, index) {
+                                  return _buildLogCard(_filteredLogs[index]);
+                                },
+                              ),
+                      ),
+
+                      const SizedBox(height: AppTheme.spacingMedium),
+
+                      // Bottom actions
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 56,
+                              child: OutlinedButton.icon(
+                                onPressed: _isExporting ? null : _exportCSV,
+                                icon: _isExporting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.download_outlined),
+                                label: Text(_isExporting ? 'Exporting...' : 'Export CSV'),
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: AppTheme.darkBackground,
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide.none,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: AppTheme.spacingMedium),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _syncNow,
-                            icon: const Icon(Icons.cloud_sync),
-                            label: const Text('Sync Now'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: AppTheme.primaryBlue,
+                          const SizedBox(width: AppTheme.spacingMedium),
+                          Expanded(
+                            child: SizedBox(
+                              height: 56,
+                              child: ElevatedButton.icon(
+                                onPressed: _isSyncing ? null : _syncNow,
+                                icon: _isSyncing
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.sync_rounded),
+                                label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryBlue,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingMedium),
-        child: Column(
-          children: [
-            Icon(icon, color: AppTheme.primaryBlue, size: 28),
-            const SizedBox(height: AppTheme.spacingSmall),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.displaySmall,
+  Widget _buildCompactStatCard(
+    IconData icon,
+    String label,
+    String value,
+    Color backgroundColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: backgroundColor == Colors.transparent
+                  ? Colors.transparent
+                  : Colors.white.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
             ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
+            child: Icon(
+              icon,
+              color: backgroundColor == AppTheme.successGreen.withOpacity(0.2)
+                  ? AppTheme.successGreen
+                  : backgroundColor == AppTheme.primaryBlue.withOpacity(0.1)
+                      ? AppTheme.primaryBlue
+                      : backgroundColor == AppTheme.primaryBlue
+                          ? Colors.white
+                          : AppTheme.textDark,
+              size: 20,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+                if (value.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildLogCard(ScanLog log) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingMedium),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(AppTheme.spacingMedium),
-        title: Text(
-          log.uid,
-          style: AppTheme.uidTextStyle.copyWith(fontSize: 14),
-        ),
-        subtitle: Column(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => _showLogDetail(log),
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: AppTheme.spacingSmall),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  log.uid,
+                  style: TextStyle(
+                    fontFamily: AppTheme.monoFontFamily,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textDark,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: log.isSynced 
+                        ? AppTheme.successGreen.withOpacity(0.1) 
+                        : AppTheme.warningOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    log.isSynced ? 'Synced' : 'Pending',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: log.isSynced 
+                          ? AppTheme.successGreen 
+                          : AppTheme.warningOrange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.access_time, size: 14, color: AppTheme.textSecondary),
-                const SizedBox(width: 4),
                 Text(
-                  DateFormat('MMM dd, HH:mm').format(log.timestamp),
-                  style: Theme.of(context).textTheme.bodySmall,
+                  DateFormat('MMM d, yyyy, h:mm a').format(log.timestamp),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
                 if (log.city != null) ...[
-                  const SizedBox(width: AppTheme.spacingMedium),
-                  Icon(Icons.location_on, size: 14, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
+                  Text(
+                    ' • ',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                   Expanded(
                     child: Text(
                       log.city!,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -382,15 +639,6 @@ class _LogScreenState extends State<LogScreen> {
             ),
           ],
         ),
-        trailing: Chip(
-          label: Text(
-            log.isSynced ? 'Synced' : 'Pending',
-            style: const TextStyle(fontSize: 10),
-          ),
-          backgroundColor: AppTheme.getStatusColor(log.isSynced ? 'synced' : 'pending'),
-          padding: EdgeInsets.zero,
-        ),
-        onTap: () => _showLogDetail(log),
       ),
     );
   }

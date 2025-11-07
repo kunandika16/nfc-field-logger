@@ -1,6 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../utils/logger.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -50,7 +51,7 @@ class LocationService {
 
       return position;
     } catch (e) {
-      print('Error getting location: $e');
+      AppLogger.error('Error getting location', e);
       return null;
     }
   }
@@ -83,7 +84,7 @@ class LocationService {
         };
       }
     } catch (e) {
-      print('Error reverse geocoding: $e');
+      AppLogger.error('Error reverse geocoding', e);
     }
 
     return {
@@ -114,7 +115,7 @@ class LocationService {
         country: addressData['country'],
       );
     } catch (e) {
-      print('Error getting complete location data: $e');
+      AppLogger.error('Error getting complete location data', e);
       return null;
     }
   }

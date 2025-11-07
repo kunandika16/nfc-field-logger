@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_log.dart';
 import 'database_helper.dart';
+import '../utils/logger.dart';
 
 enum SyncStatus { online, offline, syncing, error }
 
@@ -84,7 +85,7 @@ class SyncService {
       // Get Web App URL
       final webAppUrl = await getWebAppUrl();
       if (webAppUrl == null || webAppUrl.isEmpty) {
-        print('Google Sheets Web App URL not configured');
+        AppLogger.warning('Google Sheets Web App URL not configured');
         _updateStatus(SyncStatus.error);
         return false;
       }
@@ -128,12 +129,12 @@ class SyncService {
         _updateStatus(SyncStatus.online);
         return true;
       } else {
-        print('Sync failed with status: ${response.statusCode}');
+        AppLogger.error('Sync failed with status: ${response.statusCode}');
         _updateStatus(SyncStatus.error);
         return false;
       }
     } catch (e) {
-      print('Error syncing: $e');
+      AppLogger.error('Error syncing', e);
       _updateStatus(SyncStatus.error);
       return false;
     }

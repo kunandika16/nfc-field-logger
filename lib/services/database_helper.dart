@@ -111,6 +111,13 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
+  // Get unsynced count
+  Future<int> getUnsyncedCount() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT COUNT(*) FROM scan_logs WHERE isSynced = 0');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
   // Get most active city
   Future<String?> getMostActiveCity() async {
     final db = await database;

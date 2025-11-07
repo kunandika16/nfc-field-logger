@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/scan_log.dart';
 import 'database_helper.dart';
+import '../utils/logger.dart';
 
 class ExportService {
   static final ExportService _instance = ExportService._internal();
@@ -91,7 +92,7 @@ class ExportService {
 
       return filePath;
     } catch (e) {
-      print('Error exporting CSV: $e');
+      AppLogger.error('Error exporting CSV', e);
       return null;
     }
   }
@@ -146,7 +147,7 @@ class ExportService {
 
       return filePath;
     } catch (e) {
-      print('Error exporting CSV: $e');
+      AppLogger.error('Error exporting specific logs', e);
       return null;
     }
   }

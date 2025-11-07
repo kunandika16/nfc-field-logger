@@ -1,4 +1,5 @@
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/platform_tags.dart';
 
 class NfcService {
   static final NfcService _instance = NfcService._internal();
@@ -83,8 +84,8 @@ class NfcService {
 
     // FeliCa
     final feliCa = FeliCa.from(tag);
-    if (feliCa != null && feliCa.identifier.isNotEmpty) {
-      return _bytesToHex(feliCa.identifier);
+    if (feliCa != null && feliCa.currentIDm.isNotEmpty) {
+      return _bytesToHex(feliCa.currentIDm);
     }
 
     return null;
