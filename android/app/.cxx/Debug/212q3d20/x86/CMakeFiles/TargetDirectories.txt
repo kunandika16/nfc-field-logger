@@ -1,0 +1,2 @@
+/Volumes/EKSTERNAL/NFC PROJECT/nfc-field-logger/android/app/.cxx/Debug/212q3d20/x86/CMakeFiles/rebuild_cache.dir
+/Volumes/EKSTERNAL/NFC PROJECT/nfc-field-logger/android/app/.cxx/Debug/212q3d20/x86/CMakeFiles/edit_cache.dir

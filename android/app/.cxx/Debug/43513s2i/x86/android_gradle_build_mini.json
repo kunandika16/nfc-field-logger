@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/40005-c02h83swq05d/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/40005-c02h83swq05d/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Volumes/EKSTERNAL/NFC PROJECT/nfc-field-logger/android/app/.cxx/Debug/43513s2i/x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/40005-c02h83swq05d/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Volumes/EKSTERNAL/NFC PROJECT/nfc-field-logger/android/app/.cxx/Debug/43513s2i/x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

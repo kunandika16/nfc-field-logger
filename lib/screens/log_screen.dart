@@ -490,7 +490,7 @@ class _LogScreenState extends State<LogScreen> {
     Color backgroundColor,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
@@ -498,12 +498,12 @@ class _LogScreenState extends State<LogScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: backgroundColor == Colors.transparent
                   ? Colors.transparent
                   : Colors.white.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
@@ -514,31 +514,36 @@ class _LogScreenState extends State<LogScreen> {
                       : backgroundColor == AppTheme.primaryBlue
                           ? Colors.white
                           : AppTheme.textDark,
-              size: 20,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     color: AppTheme.textSecondary,
-                    height: 1.3,
+                    height: 1.2,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 if (value.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textDark,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ],
@@ -647,25 +652,30 @@ class _LogScreenState extends State<LogScreen> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.inbox,
-            size: 80,
+            size: 60,
             color: AppTheme.textSecondary.withOpacity(0.5),
           ),
-          const SizedBox(height: AppTheme.spacingMedium),
+          const SizedBox(height: 12),
           Text(
             'No logs available',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+            ),
           ),
-          const SizedBox(height: AppTheme.spacingSmall),
+          const SizedBox(height: 6),
           Text(
             'Scan an NFC card to create a log entry',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
