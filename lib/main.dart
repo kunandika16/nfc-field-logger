@@ -42,11 +42,18 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  final GlobalKey<_LogScreenState> _logScreenKey = GlobalKey<_LogScreenState>();
 
-  final List<Widget> _screens = [
-    const ScanScreen(),
-    const LogScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const ScanScreen(),
+      LogScreen(key: _logScreenKey),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +90,13 @@ class _MainScreenState extends State<MainScreen> {
                   icon: Icons.description_outlined,
                   label: 'Log',
                   isSelected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
+                  onTap: () {
+                    setState(() => _currentIndex = 1);
+                    // Refresh log screen when switching to it
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _logScreenKey.currentState?.refreshData();
+                    });
+                  },
                 ),
               ],
             ),

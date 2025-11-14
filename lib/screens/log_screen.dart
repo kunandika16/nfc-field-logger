@@ -15,6 +15,10 @@ class LogScreen extends StatefulWidget {
 }
 
 class _LogScreenState extends State<LogScreen> {
+  // Make loadData accessible from parent
+  void refreshData() {
+    _loadData();
+  }
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final SyncService _syncService = SyncService();
   final ExportService _exportService = ExportService();
@@ -35,7 +39,17 @@ class _LogScreenState extends State<LogScreen> {
     _loadData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when returning to this screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
   Future<void> _loadData() async {
+    print('Loading log data...');
     setState(() {
       _isLoading = true;
     });
@@ -45,6 +59,8 @@ class _LogScreenState extends State<LogScreen> {
       final totalScans = await _dbHelper.getTotalScanCount();
       final mostActiveCity = await _dbHelper.getMostActiveCity();
 
+      print('Loaded ${logs.length} logs, total scans: $totalScans');
+
       setState(() {
         _logs = logs;
         _filteredLogs = logs;
@@ -52,7 +68,10 @@ class _LogScreenState extends State<LogScreen> {
         _mostActiveCity = mostActiveCity;
         _isLoading = false;
       });
+      
+      _applyFilters();
     } catch (e) {
+      print('Error loading data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -247,6 +266,15 @@ class _LogScreenState extends State<LogScreen> {
                             ),
                           ),
                               const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () async {
+                                  await _dbHelper.insertDummyData();
+                                  _loadData();
+                                  _showSnackBar('Dummy data added');
+                                },
+                                icon: const Icon(Icons.add_circle_outline),
+                                color: AppTheme.textDark,
+                              ),
                               IconButton(
                                 onPressed: () {
                                   Navigator.push(

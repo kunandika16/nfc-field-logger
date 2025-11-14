@@ -67,8 +67,17 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _startScan() async {
+    print('Starting NFC scan...');
+    
     if (!_nfcAvailable) {
+      print('NFC not available');
       _showSnackBar('NFC is not available on this device', isError: true);
+      return;
+    }
+
+    if (_nfcService.isScanning) {
+      print('NFC scan already in progress');
+      _showSnackBar('Scan already in progress', isError: true);
       return;
     }
 
@@ -77,19 +86,25 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     });
 
     _animationController.repeat(reverse: true);
+    _showSnackBar('Hold your device near an NFC card...');
 
     try {
+      print('Calling NFC service scanNfcTag...');
       // Scan NFC tag
       final uid = await _nfcService.scanNfcTag();
+      print('NFC scan result: $uid');
 
-      if (uid == null) {
+      if (uid == null || uid.isEmpty) {
+        print('No UID found');
         _showSnackBar('No UID found on NFC tag', isError: true);
         _stopScanning();
         return;
       }
 
+      print('Getting location data...');
       // Get location data
       final locationData = await _locationService.getCompleteLocationData();
+      print('Location data: ${locationData?.toString()}');
 
       // Create scan log
       final scanLog = ScanLog(
@@ -102,22 +117,26 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
         isSynced: false,
       );
 
+      print('Saving to database...');
       // Save to database
       await _dbHelper.insertScanLog(scanLog);
+      print('Saved successfully');
 
       // Update UI
       setState(() {
         _lastScan = scanLog;
       });
 
-      _showSnackBar('Saved to log successfully');
+      _showSnackBar('NFC card scanned: $uid');
 
       // Reload stats
-      _loadStats();
+      await _loadStats();
+      print('Stats reloaded after scan');
 
       // Auto-sync if online
       _syncService.autoSync();
     } catch (e) {
+      print('NFC scan error: $e');
       _showSnackBar('Error: ${e.toString()}', isError: true);
     } finally {
       _stopScanning();

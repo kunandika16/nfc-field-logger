@@ -42,18 +42,32 @@ class DatabaseHelper {
 
   // Insert a new scan log
   Future<int> insertScanLog(ScanLog log) async {
-    final db = await database;
-    return await db.insert('scan_logs', log.toMap());
+    try {
+      print('Inserting scan log: ${log.toMap()}');
+      final db = await database;
+      final id = await db.insert('scan_logs', log.toMap());
+      print('Inserted scan log with ID: $id');
+      return id;
+    } catch (e) {
+      print('Error inserting scan log: $e');
+      rethrow;
+    }
   }
 
   // Get all scan logs
   Future<List<ScanLog>> getAllScanLogs() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'scan_logs',
-      orderBy: 'timestamp DESC',
-    );
-    return List.generate(maps.length, (i) => ScanLog.fromMap(maps[i]));
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'scan_logs',
+        orderBy: 'timestamp DESC',
+      );
+      print('Retrieved ${maps.length} scan logs from database');
+      return List.generate(maps.length, (i) => ScanLog.fromMap(maps[i]));
+    } catch (e) {
+      print('Error getting scan logs: $e');
+      return [];
+    }
   }
 
   // Get unsynced scan logs
@@ -106,9 +120,16 @@ class DatabaseHelper {
 
   // Get total scan count
   Future<int> getTotalScanCount() async {
-    final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) FROM scan_logs');
-    return Sqflite.firstIntValue(result) ?? 0;
+    try {
+      final db = await database;
+      final result = await db.rawQuery('SELECT COUNT(*) FROM scan_logs');
+      final count = Sqflite.firstIntValue(result) ?? 0;
+      print('Total scan count: $count');
+      return count;
+    } catch (e) {
+      print('Error getting total scan count: $e');
+      return 0;
+    }
   }
 
   // Get unsynced count
@@ -149,5 +170,21 @@ class DatabaseHelper {
   Future<void> clearAllLogs() async {
     final db = await database;
     await db.delete('scan_logs');
+  }
+
+  // Insert dummy data for testing
+  Future<void> insertDummyData() async {
+    print('Inserting dummy data...');
+    final dummyLog = ScanLog(
+      uid: 'AA:BB:CC:DD',
+      timestamp: DateTime.now(),
+      latitude: -6.2088,
+      longitude: 106.8456,
+      address: 'Jakarta, Indonesia',
+      city: 'Jakarta',
+      isSynced: false,
+    );
+    await insertScanLog(dummyLog);
+    print('Dummy data inserted');
   }
 }
