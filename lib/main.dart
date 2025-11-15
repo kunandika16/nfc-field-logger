@@ -42,7 +42,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  final GlobalKey<_LogScreenState> _logScreenKey = GlobalKey<_LogScreenState>();
+  final GlobalKey<LogScreenState> _logScreenKey = GlobalKey<LogScreenState>();
 
   late final List<Widget> _screens;
 

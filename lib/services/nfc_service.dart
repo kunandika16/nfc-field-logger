@@ -77,7 +77,7 @@ class NfcService {
 
       // Wait for scan result with timeout
       final result = await _scanCompleter!.future.timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 10),
         onTimeout: () {
           print('NFC scan timeout');
           stopSession();

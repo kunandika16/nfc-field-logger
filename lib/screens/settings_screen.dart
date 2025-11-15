@@ -15,8 +15,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final TextEditingController _urlController = TextEditingController();
   
+  // Default Google Apps Script URL
+  static const String defaultAppScriptUrl =
+      'https://script.google.com/macros/s/AKfycbw0X-aUMO6-09o0fJ1yWl1d-sTMI2EUQ5mpO8SKR1oCIZhSkvwnGqrKVtdbAqSB5Q2KbA/exec';
+  
   bool _isLoading = true;
   bool _isTesting = false;
+  bool _isEditingUrl = false;
   bool _autoSyncEnabled = true;
   String? _lastSyncTime;
   int _totalLogs = 0;
@@ -37,8 +42,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final total = await _dbHelper.getTotalScanCount();
     final unsynced = await _dbHelper.getUnsyncedCount();
 
+    // If no URL is set, use default URL
+    if (url == null || url.isEmpty) {
+      await _syncService.setWebAppUrl(defaultAppScriptUrl);
+      _urlController.text = defaultAppScriptUrl;
+    } else {
+      _urlController.text = url;
+    }
+
     setState(() {
-      _urlController.text = url ?? '';
       _autoSyncEnabled = autoSync;
       _lastSyncTime = lastSync?.toString();
       _totalLogs = total;
@@ -197,78 +209,162 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Web App URL',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textDark,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _urlController,
-                            decoration: InputDecoration(
-                              hintText: 'https://script.google.com/macros/s/.../exec',
-                              hintStyle: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 12,
-                              ),
-                              filled: true,
-                              fillColor: AppTheme.lightBackground,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.all(16),
-                            ),
-                            maxLines: 3,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          const SizedBox(height: 12),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _saveUrl,
-                                  icon: const Icon(Icons.save_outlined, size: 18),
-                                  label: const Text('Save URL'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primaryBlue,
-                                    side: const BorderSide(color: AppTheme.primaryBlue),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
+                              const Text(
+                                'Web App URL',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textDark,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _isTesting ? null : _testConnection,
-                                  icon: _isTesting
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Icon(Icons.wifi_find, size: 18),
-                                  label: Text(_isTesting ? 'Testing...' : 'Test'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryBlue,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _isEditingUrl = !_isEditingUrl;
+                                  });
+                                },
+                                icon: Icon(
+                                  _isEditingUrl ? Icons.close : Icons.edit,
+                                  size: 16,
+                                ),
+                                label: Text(_isEditingUrl ? 'Cancel' : 'Edit'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppTheme.primaryBlue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+                          if (_isEditingUrl)
+                            TextField(
+                              controller: _urlController,
+                              decoration: InputDecoration(
+                                hintText: 'https://script.google.com/macros/s/.../exec',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.lightBackground,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.all(16),
+                              ),
+                              maxLines: 3,
+                              style: const TextStyle(fontSize: 12),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightBackground,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.link,
+                                    size: 20,
+                                    color: AppTheme.successGreen,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _urlController.text.isNotEmpty
+                                          ? _urlController.text
+                                          : 'No URL configured',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textDark,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          if (_isEditingUrl)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      _saveUrl();
+                                      setState(() => _isEditingUrl = false);
+                                    },
+                                    icon: const Icon(Icons.save_outlined, size: 18),
+                                    label: const Text('Save URL'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryBlue,
+                                      side: const BorderSide(color: AppTheme.primaryBlue),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isTesting ? null : _testConnection,
+                                    icon: _isTesting
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.wifi_find, size: 18),
+                                    label: Text(_isTesting ? 'Testing...' : 'Test'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryBlue,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _isTesting ? null : _testConnection,
+                                icon: _isTesting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.wifi_find, size: 18),
+                                label: Text(_isTesting ? 'Testing Connection...' : 'Test Connection'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryBlue,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(12),

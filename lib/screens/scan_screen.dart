@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/scan_log.dart';
 import '../services/nfc_service.dart';
 import 'settings_screen.dart';
@@ -6,6 +7,8 @@ import '../services/location_service.dart';
 import '../services/database_helper.dart';
 import '../services/sync_service.dart';
 import '../utils/app_theme.dart';
+import '../widgets/nfc_success_dialog.dart';
+import '../widgets/nfc_error_dialog.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({Key? key}) : super(key: key);
@@ -22,6 +25,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
 
   bool _isScanning = false;
   bool _nfcAvailable = false;
+  bool _isOnline = false;
   ScanLog? _lastScan;
   int _totalScans = 0;
   int _unsyncedCount = 0;
@@ -37,6 +41,20 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     _initializeAnimation();
     _syncService.initialize();
     _loadStats();
+    _checkConnectivity();
+    // Listen to connectivity changes
+    Connectivity().onConnectivityChanged.listen((result) {
+      setState(() {
+        _isOnline = result != ConnectivityResult.none;
+      });
+    });
+  }
+
+  Future<void> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOnline = result != ConnectivityResult.none;
+    });
   }
 
   Future<void> _loadStats() async {
@@ -127,17 +145,44 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
         _lastScan = scanLog;
       });
 
-      _showSnackBar('NFC card scanned: $uid');
-
       // Reload stats
       await _loadStats();
       print('Stats reloaded after scan');
+
+      // Show success dialog
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => NfcSuccessDialog(
+            scanLog: scanLog,
+            onClose: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        );
+      }
 
       // Auto-sync if online
       _syncService.autoSync();
     } catch (e) {
       print('NFC scan error: $e');
-      _showSnackBar('Error: ${e.toString()}', isError: true);
+      
+      // Show error dialog for timeout
+      if (mounted && e.toString().contains('timeout')) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => NfcErrorDialog(
+            title: 'Scan Failed',
+            message: 'No NFC tag detected within 10 seconds. Please make sure the NFC tag is close to your device and try again.',
+            onClose: () {},
+            onRetry: _startScan,
+          ),
+        );
+      } else {
+        _showSnackBar('Error: ${e.toString()}', isError: true);
+      }
     } finally {
       _stopScanning();
     }
@@ -164,18 +209,6 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     );
   }
 
-  String _getSyncStatusText() {
-    switch (_syncService.status) {
-      case SyncStatus.online:
-        return 'Online';
-      case SyncStatus.offline:
-        return 'Offline';
-      case SyncStatus.syncing:
-        return 'Syncing';
-      case SyncStatus.error:
-        return 'Error';
-    }
-  }
 
   @override
   void dispose() {
@@ -207,37 +240,37 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                   Row(
                     children: [
                       Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.successGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: AppTheme.successGreen,
-                            shape: BoxShape.circle,
-                          ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _getSyncStatusText(),
-                          style: TextStyle(
-                            color: AppTheme.successGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        decoration: BoxDecoration(
+                          color: (_isOnline ? AppTheme.successGreen : AppTheme.errorRed).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                      ],
-                    ),
-                  ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _isOnline ? 'Online' : 'Offline',
+                              style: TextStyle(
+                                color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       IconButton(
                         onPressed: () {

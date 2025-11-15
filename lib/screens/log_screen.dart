@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/scan_log.dart';
 import 'settings_screen.dart';
 import '../services/database_helper.dart';
@@ -11,10 +12,10 @@ class LogScreen extends StatefulWidget {
   const LogScreen({Key? key}) : super(key: key);
 
   @override
-  State<LogScreen> createState() => _LogScreenState();
+  State<LogScreen> createState() => LogScreenState();
 }
 
-class _LogScreenState extends State<LogScreen> {
+class LogScreenState extends State<LogScreen> {
   // Make loadData accessible from parent
   void refreshData() {
     _loadData();
@@ -27,8 +28,9 @@ class _LogScreenState extends State<LogScreen> {
   List<ScanLog> _filteredLogs = [];
   int _totalScans = 0;
   String? _mostActiveCity;
+  DateTime? _lastSyncTime;
   bool _isLoading = true;
-  bool _showUnsyncedOnly = false;
+  bool _isOnline = false;
   bool _isSyncing = false;
   bool _isExporting = false;
   final TextEditingController _searchController = TextEditingController();
@@ -37,6 +39,14 @@ class _LogScreenState extends State<LogScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _checkConnectivity();
+    _loadLastSyncTime();
+    // Listen to connectivity changes
+    Connectivity().onConnectivityChanged.listen((result) {
+      setState(() {
+        _isOnline = result != ConnectivityResult.none;
+      });
+    });
   }
 
   @override
@@ -45,6 +55,20 @@ class _LogScreenState extends State<LogScreen> {
     // Refresh data when returning to this screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+    });
+  }
+
+  Future<void> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOnline = result != ConnectivityResult.none;
+    });
+  }
+
+  Future<void> _loadLastSyncTime() async {
+    await _syncService.loadLastSyncTime();
+    setState(() {
+      _lastSyncTime = _syncService.lastSyncTime;
     });
   }
 
@@ -84,15 +108,11 @@ class _LogScreenState extends State<LogScreen> {
     // Filter by search query
     if (_searchController.text.isNotEmpty) {
       filtered = filtered
-          .where((log) => log.uid
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase()))
+          .where((log) =>
+              log.uid.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+              (log.city?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
+              (log.address?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false))
           .toList();
-    }
-
-    // Filter by sync status
-    if (_showUnsyncedOnly) {
-      filtered = filtered.where((log) => !log.isSynced).toList();
     }
 
     setState(() {
@@ -109,6 +129,7 @@ class _LogScreenState extends State<LogScreen> {
     
     if (success) {
       _showSnackBar('Sync completed successfully');
+      await _loadLastSyncTime();
       _loadData();
     } else {
       _showSnackBar('Sync failed', isError: true);
@@ -145,61 +166,164 @@ class _LogScreenState extends State<LogScreen> {
   void _showLogDetail(ScanLog log) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBackground,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          borderRadius: BorderRadius.circular(20),
         ),
-        title: const Text('Scan Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDetailRow('UID', log.uid, isMonospace: true),
-            const SizedBox(height: AppTheme.spacingSmall),
-            _buildDetailRow(
-              'Time',
-              DateFormat('MMM dd, yyyy • HH:mm:ss').format(log.timestamp),
-            ),
-            const SizedBox(height: AppTheme.spacingSmall),
-            _buildDetailRow('City', log.city ?? 'Unknown'),
-            const SizedBox(height: AppTheme.spacingSmall),
-            _buildDetailRow('Address', log.address ?? 'Unknown'),
-            const SizedBox(height: AppTheme.spacingSmall),
-            _buildDetailRow('Coordinates', log.formattedCoordinates),
-            const SizedBox(height: AppTheme.spacingSmall),
-            _buildDetailRow('Status', log.isSynced ? 'Synced' : 'Pending'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Scan Details',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    color: AppTheme.textSecondary,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // UID Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.credit_card,
+                        color: AppTheme.primaryBlue,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'UID',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            log.uid,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textDark,
+                              fontFamily: AppTheme.monoFontFamily,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Details
+              _buildDetailItem(Icons.access_time, 'Time', DateFormat('MMM dd, yyyy • HH:mm:ss').format(log.timestamp)),
+              const SizedBox(height: 12),
+              _buildDetailItem(Icons.location_city, 'City', log.city ?? 'Unknown'),
+              const SizedBox(height: 12),
+              _buildDetailItem(Icons.location_on, 'Address', log.address ?? 'Unknown'),
+              const SizedBox(height: 12),
+              _buildDetailItem(Icons.my_location, 'Coordinates', log.formattedCoordinates),
+              const SizedBox(height: 16),
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: log.isSynced 
+                      ? AppTheme.successGreen.withOpacity(0.1)
+                      : AppTheme.warningOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      log.isSynced ? Icons.check_circle : Icons.schedule,
+                      size: 16,
+                      color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      log.isSynced ? 'Synced' : 'Pending Sync',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isMonospace = false}) {
-    return Column(
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 14,
-            fontFamily: isMonospace ? AppTheme.monoFontFamily : AppTheme.fontFamily,
+        Icon(icon, size: 18, color: AppTheme.textSecondary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textDark,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -234,46 +358,61 @@ class _LogScreenState extends State<LogScreen> {
                           Row(
                             children: [
                               Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.successGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.successGreen,
-                                    shape: BoxShape.circle,
-                                  ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Online',
-                                  style: TextStyle(
-                                    color: AppTheme.successGreen,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                decoration: BoxDecoration(
+                                  color: (_isOnline ? AppTheme.successGreen : AppTheme.errorRed).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
-                              ],
-                            ),
-                          ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _isOnline ? 'Online' : 'Offline',
+                                      style: TextStyle(
+                                        color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               const SizedBox(width: 8),
                               IconButton(
-                                onPressed: () async {
-                                  await _dbHelper.insertDummyData();
-                                  _loadData();
-                                  _showSnackBar('Dummy data added');
-                                },
-                                icon: const Icon(Icons.add_circle_outline),
+                                onPressed: _isExporting ? null : _exportCSV,
+                                icon: _isExporting
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.download_outlined),
                                 color: AppTheme.textDark,
+                                tooltip: 'Export CSV',
+                              ),
+                              IconButton(
+                                onPressed: _isSyncing ? null : _syncNow,
+                                icon: _isSyncing
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.sync_rounded),
+                                color: AppTheme.primaryBlue,
+                                tooltip: 'Sync Now',
                               ),
                               IconButton(
                                 onPressed: () {
@@ -286,6 +425,7 @@ class _LogScreenState extends State<LogScreen> {
                                 },
                                 icon: const Icon(Icons.settings_outlined),
                                 color: AppTheme.textDark,
+                                tooltip: 'Settings',
                               ),
                             ],
                           ),
@@ -295,66 +435,44 @@ class _LogScreenState extends State<LogScreen> {
                       const SizedBox(height: AppTheme.spacingLarge),
 
                       // Stats cards
-                      Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingLarge),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildCompactStatCard(
-                                    Icons.download_outlined,
-                                    'Total\nScans',
-                                    _totalScans.toString(),
-                                    AppTheme.primaryBlue,
-                                  ),
+                      Column(
+                        children: [
+                          // Top 2 cards
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  icon: Icons.qr_code_scanner,
+                                  label: 'Total Scans',
+                                  value: _totalScans.toString(),
+                                  color: AppTheme.primaryBlue,
                                 ),
-                                const SizedBox(width: AppTheme.spacingMedium),
-                                Expanded(
-                                  child: _buildCompactStatCard(
-                                    Icons.schedule,
-                                    '12:00 PM\nMost Active',
-                                    _mostActiveCity ?? 'N/A',
-                                    Colors.transparent,
-                                  ),
+                              ),
+                              const SizedBox(width: AppTheme.spacingMedium),
+                              Expanded(
+                                child: _buildStatCard(
+                                  icon: Icons.location_city,
+                                  label: 'Most Active',
+                                  value: _mostActiveCity ?? 'N/A',
+                                  color: AppTheme.successGreen,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: AppTheme.spacingMedium),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildCompactStatCard(
-                                    Icons.location_on_outlined,
-                                    'New\nYork',
-                                    '',
-                                    AppTheme.successGreen.withOpacity(0.2),
-                                  ),
-                                ),
-                                const SizedBox(width: AppTheme.spacingMedium),
-                                Expanded(
-                                  child: _buildCompactStatCard(
-                                    Icons.sync,
-                                    '2m ago\nLast Sync',
-                                    '',
-                                    AppTheme.primaryBlue.withOpacity(0.1),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.spacingMedium),
+                          // Bottom wide card
+                          _buildWideStatCard(
+                            icon: Icons.sync,
+                            label: 'Last Sync',
+                            value: _lastSyncTime != null 
+                                ? _formatLastSync(_lastSyncTime!) 
+                                : 'Never',
+                            subtitle: _lastSyncTime != null
+                                ? DateFormat('MMM dd, yyyy • HH:mm').format(_lastSyncTime!)
+                                : 'No sync performed yet',
+                            color: AppTheme.warningOrange,
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: AppTheme.spacingLarge),
@@ -396,39 +514,6 @@ class _LogScreenState extends State<LogScreen> {
 
                       const SizedBox(height: AppTheme.spacingMedium),
 
-                      // Filter chip
-                      Row(
-                        children: [
-                          FilterChip(
-                            label: Text(
-                              'Show unsynced only',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: _showUnsyncedOnly 
-                                    ? AppTheme.primaryBlue 
-                                    : AppTheme.textSecondary,
-                              ),
-                            ),
-                            selected: _showUnsyncedOnly,
-                            onSelected: (selected) {
-                              setState(() {
-                                _showUnsyncedOnly = selected;
-                              });
-                              _applyFilters();
-                            },
-                            backgroundColor: Colors.white,
-                            selectedColor: AppTheme.primaryBlue.withOpacity(0.1),
-                            side: BorderSide(
-                              color: _showUnsyncedOnly 
-                                  ? AppTheme.primaryBlue 
-                                  : Colors.grey.shade300,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: AppTheme.spacingMedium),
-
                       // Log list
                       Expanded(
                         child: _filteredLogs.isEmpty
@@ -440,69 +525,6 @@ class _LogScreenState extends State<LogScreen> {
                                 },
                               ),
                       ),
-
-                      const SizedBox(height: AppTheme.spacingMedium),
-
-                      // Bottom actions
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 56,
-                              child: OutlinedButton.icon(
-                                onPressed: _isExporting ? null : _exportCSV,
-                                icon: _isExporting
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.download_outlined),
-                                label: Text(_isExporting ? 'Exporting...' : 'Export CSV'),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: AppTheme.darkBackground,
-                                  foregroundColor: Colors.white,
-                                  side: BorderSide.none,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spacingMedium),
-                          Expanded(
-                            child: SizedBox(
-                              height: 56,
-                              child: ElevatedButton.icon(
-                                onPressed: _isSyncing ? null : _syncNow,
-                                icon: _isSyncing
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.sync_rounded),
-                                label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryBlue,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -511,69 +533,147 @@ class _LogScreenState extends State<LogScreen> {
     );
   }
 
-  Widget _buildCompactStatCard(
-    IconData icon,
-    String label,
-    String value,
-    Color backgroundColor,
-  ) {
+  String _formatLastSync(DateTime lastSync) {
+    final now = DateTime.now();
+    final difference = now.difference(lastSync);
+
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return DateFormat('MMM d').format(lastSync);
+    }
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textDark,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWideStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String subtitle,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: backgroundColor == Colors.transparent
-                  ? Colors.transparent
-                  : Colors.white.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10),
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
-              color: backgroundColor == AppTheme.successGreen.withOpacity(0.2)
-                  ? AppTheme.successGreen
-                  : backgroundColor == AppTheme.primaryBlue.withOpacity(0.1)
-                      ? AppTheme.primaryBlue
-                      : backgroundColor == AppTheme.primaryBlue
-                          ? Colors.white
-                          : AppTheme.textDark,
-              size: 18,
+              color: color,
+              size: 28,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 12,
                     color: AppTheme.textSecondary,
-                    height: 1.2,
+                    fontWeight: FontWeight.w500,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                if (value.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textDark,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textDark,
                   ),
-                ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
               ],
             ),
           ),

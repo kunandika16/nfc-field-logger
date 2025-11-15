@@ -72,10 +72,12 @@ class SyncService {
   // Sync unsynced logs to Google Sheets
   Future<bool> syncLogs() async {
     try {
+      AppLogger.info('Starting sync process...');
       _updateStatus(SyncStatus.syncing);
 
       // Check internet connection
       if (!await isOnline()) {
+        AppLogger.warning('Device is offline');
         _updateStatus(SyncStatus.offline);
         return false;
       }
@@ -84,6 +86,8 @@ class SyncService {
 
       // Get Web App URL
       final webAppUrl = await getWebAppUrl();
+      AppLogger.info('Web App URL: $webAppUrl');
+      
       if (webAppUrl == null || webAppUrl.isEmpty) {
         AppLogger.warning('Google Sheets Web App URL not configured');
         _updateStatus(SyncStatus.error);
@@ -92,7 +96,10 @@ class SyncService {
 
       // Get unsynced logs
       List<ScanLog> unsyncedLogs = await _dbHelper.getUnsyncedLogs();
+      AppLogger.info('Found ${unsyncedLogs.length} unsynced logs');
+      
       if (unsyncedLogs.isEmpty) {
+        AppLogger.info('No logs to sync');
         _updateStatus(SyncStatus.online);
         await _saveLastSyncTime();
         return true;
@@ -103,33 +110,66 @@ class SyncService {
         return {
           'uid': log.uid,
           'timestamp': log.timestamp.toIso8601String(),
-          'latitude': log.latitude?.toString() ?? '',
-          'longitude': log.longitude?.toString() ?? '',
+          'latitude': log.latitude,
+          'longitude': log.longitude,
           'address': log.address ?? '',
           'city': log.city ?? '',
         };
       }).toList();
 
+      final requestBody = jsonEncode({'logs': dataToSync});
+      AppLogger.info('Request body: $requestBody');
+
       // Send to Google Sheets via Web App
+      AppLogger.info('Sending POST request to Google Sheets...');
       final response = await http.post(
         Uri.parse(webAppUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'logs': dataToSync}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: requestBody,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout after 30 seconds');
+        },
       );
 
-      if (response.statusCode == 200) {
-        // Mark all logs as synced
-        for (var log in unsyncedLogs) {
-          if (log.id != null) {
-            await _dbHelper.updateSyncStatus(log.id!, true);
-          }
-        }
+      AppLogger.info('Response status: ${response.statusCode}');
+      AppLogger.info('Response body: ${response.body}');
 
-        await _saveLastSyncTime();
-        _updateStatus(SyncStatus.online);
-        return true;
+      if (response.statusCode == 200) {
+        // Try to parse response
+        try {
+          final responseData = jsonDecode(response.body);
+          AppLogger.info('Sync response: $responseData');
+          
+          if (responseData['status'] == 'success') {
+            // Mark all logs as synced
+            for (var log in unsyncedLogs) {
+              if (log.id != null) {
+                await _dbHelper.updateSyncStatus(log.id!, true);
+              }
+            }
+
+            await _saveLastSyncTime();
+            _updateStatus(SyncStatus.online);
+            AppLogger.info('Sync completed successfully');
+            return true;
+          } else {
+            AppLogger.error('Sync failed: ${responseData['message']}');
+            _updateStatus(SyncStatus.error);
+            return false;
+          }
+        } catch (e) {
+          AppLogger.error('Error parsing response', e);
+          _updateStatus(SyncStatus.error);
+          return false;
+        }
       } else {
         AppLogger.error('Sync failed with status: ${response.statusCode}');
+        AppLogger.error('Response body: ${response.body}');
         _updateStatus(SyncStatus.error);
         return false;
       }

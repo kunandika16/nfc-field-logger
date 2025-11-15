@@ -31,6 +31,7 @@ class LocationService {
       // Check if location service is enabled
       bool serviceEnabled = await isLocationServiceEnabled();
       if (!serviceEnabled) {
+        AppLogger.warning('Location services are disabled');
         throw Exception('Location services are disabled');
       }
 
@@ -39,17 +40,48 @@ class LocationService {
       if (!hasPerms) {
         hasPerms = await requestPermission();
         if (!hasPerms) {
+          AppLogger.warning('Location permission denied');
           throw Exception('Location permission denied');
         }
       }
 
-      // Get position
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-
-      return position;
+      AppLogger.info('Attempting to get high accuracy position...');
+      
+      // Try high accuracy first with shorter timeout
+      try {
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 15),
+        ).timeout(
+          const Duration(seconds: 15),
+        );
+        AppLogger.info('Got high accuracy position');
+        return position;
+      } catch (e) {
+        AppLogger.warning('High accuracy timeout, trying low accuracy...');
+        
+        // Fallback to low accuracy (network-based)
+        try {
+          Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low,
+            timeLimit: const Duration(seconds: 10),
+          ).timeout(
+            const Duration(seconds: 10),
+          );
+          AppLogger.info('Got low accuracy position');
+          return position;
+        } catch (e2) {
+          AppLogger.warning('Low accuracy also failed, trying last known position...');
+          
+          // Last resort: get last known position
+          final lastPosition = await Geolocator.getLastKnownPosition();
+          if (lastPosition != null) {
+            AppLogger.info('Using last known position');
+            return lastPosition;
+          }
+          throw Exception('Unable to get any location');
+        }
+      }
     } catch (e) {
       AppLogger.error('Error getting location', e);
       return null;
@@ -60,6 +92,7 @@ class LocationService {
   Future<Map<String, String?>> getAddressFromCoordinates(
       double latitude, double longitude) async {
     try {
+      AppLogger.info('Starting reverse geocoding for: $latitude, $longitude');
       List<Placemark> placemarks = await placemarkFromCoordinates(
         latitude,
         longitude,
@@ -67,6 +100,7 @@ class LocationService {
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
+        AppLogger.info('Geocoding result - Locality: ${place.locality}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
         
         String? fullAddress = [
           place.street,
@@ -82,6 +116,8 @@ class LocationService {
           'street': place.street,
           'postalCode': place.postalCode,
         };
+      } else {
+        AppLogger.warning('No placemarks found for coordinates');
       }
     } catch (e) {
       AppLogger.error('Error reverse geocoding', e);
@@ -99,21 +135,29 @@ class LocationService {
   // Get complete location data (position + address)
   Future<LocationData?> getCompleteLocationData() async {
     try {
+      AppLogger.info('Getting complete location data...');
       Position? position = await getCurrentPosition();
-      if (position == null) return null;
+      if (position == null) {
+        AppLogger.warning('Position is null');
+        return null;
+      }
 
+      AppLogger.info('Position obtained: ${position.latitude}, ${position.longitude}');
       Map<String, String?> addressData = await getAddressFromCoordinates(
         position.latitude,
         position.longitude,
       );
 
-      return LocationData(
+      final locationData = LocationData(
         latitude: position.latitude,
         longitude: position.longitude,
         address: addressData['address'],
         city: addressData['city'],
         country: addressData['country'],
       );
+      
+      AppLogger.info('Location data complete - City: ${locationData.city}, Address: ${locationData.address}');
+      return locationData;
     } catch (e) {
       AppLogger.error('Error getting complete location data', e);
       return null;
