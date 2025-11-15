@@ -100,18 +100,19 @@ class LocationService {
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        AppLogger.info('Geocoding result - Locality: ${place.locality}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
+        AppLogger.info('Geocoding result - Locality: ${place.locality}, SubAdminArea: ${place.subAdministrativeArea}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
         
         String? fullAddress = [
           place.street,
           place.locality,
+          place.subAdministrativeArea,
           place.administrativeArea,
           place.country,
         ].where((s) => s != null && s.isNotEmpty).join(', ');
 
         return {
           'address': fullAddress.isEmpty ? null : fullAddress,
-          'city': place.locality ?? place.administrativeArea,
+          'city': place.subAdministrativeArea ?? place.locality,
           'country': place.country,
           'street': place.street,
           'postalCode': place.postalCode,

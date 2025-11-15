@@ -53,6 +53,9 @@ dependencies:
   # Network and sync
   http: ^1.1.0
   connectivity_plus: ^4.0.2
+  firebase_core: ^2.24.0
+  firebase_database: ^10.3.0
+  firebase_auth: ^4.15.0
   
   # Data export
   csv: ^5.0.2
