@@ -336,14 +336,16 @@ class LogScreenState extends State<LogScreen> {
       backgroundColor: AppTheme.lightBackground,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingLarge),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+          : SafeArea(
+              child: RefreshIndicator(
+                onRefresh: _loadData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                       // Header with title and status
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -514,18 +516,22 @@ class LogScreenState extends State<LogScreen> {
 
                       const SizedBox(height: AppTheme.spacingMedium),
 
-                      // Log list
-                      Expanded(
-                        child: _filteredLogs.isEmpty
-                            ? _buildEmptyState()
+                        // Log list
+                        _filteredLogs.isEmpty
+                            ? SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.4,
+                                child: _buildEmptyState(),
+                              )
                             : ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
                                 itemCount: _filteredLogs.length,
                                 itemBuilder: (context, index) {
                                   return _buildLogCard(_filteredLogs[index]);
                                 },
                               ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

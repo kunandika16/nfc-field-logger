@@ -221,11 +221,18 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingLarge),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _loadStats,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
               // Header with title and status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -405,6 +412,10 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                     child: _buildStatItem(_syncedCount.toString(), 'Synced'),
                   ),
                 ],
+              ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

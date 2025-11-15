@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "212715714544",
+    "firebase_url": "https://nfc-field-logger-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "nfc-field-logger",
+    "storage_bucket": "nfc-field-logger.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212715714544:android:b75f66de4d15486daecf35",
+        "android_client_info": {
+          "package_name": "com.android.nfclogger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEi1Z7iEkm67zdOimq7WWkraH1L7X7A88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
