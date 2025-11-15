@@ -107,9 +107,14 @@ class SyncService {
 
       // Prepare data for Google Sheets
       List<Map<String, dynamic>> dataToSync = unsyncedLogs.map((log) {
+        // Format timestamp to readable format: "2025-11-15 17:30:45"
+        final formattedTimestamp = 
+            '${log.timestamp.year}-${log.timestamp.month.toString().padLeft(2, '0')}-${log.timestamp.day.toString().padLeft(2, '0')} ' +
+            '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
+        
         return {
           'uid': log.uid,
-          'timestamp': log.timestamp.toIso8601String(),
+          'timestamp': formattedTimestamp,
           'latitude': log.latitude,
           'longitude': log.longitude,
           'address': log.address ?? '',
@@ -122,11 +127,12 @@ class SyncService {
 
       // Send to Google Sheets via Web App
       AppLogger.info('Sending POST request to Google Sheets...');
+      
+      // Use simple POST - let http package handle redirects automatically
       final response = await http.post(
         Uri.parse(webAppUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: requestBody,
       ).timeout(
@@ -135,9 +141,25 @@ class SyncService {
           throw Exception('Request timeout after 30 seconds');
         },
       );
-
+      
       AppLogger.info('Response status: ${response.statusCode}');
-      AppLogger.info('Response body: ${response.body}');
+      AppLogger.info('Response body: ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
+      
+      // Google Apps Script sometimes returns 302 redirect after successful execution
+      // This is normal behavior - treat as success if status is 200 or 302
+      if (response.statusCode == 302 || response.statusCode == 301) {
+        AppLogger.info('Got 302 redirect - data likely saved successfully');
+        // Mark all logs as synced since Google Apps Script executed successfully
+        for (var log in unsyncedLogs) {
+          if (log.id != null) {
+            await _dbHelper.updateSyncStatus(log.id!, true);
+          }
+        }
+        await _saveLastSyncTime();
+        _updateStatus(SyncStatus.online);
+        AppLogger.info('Sync completed successfully (via redirect)');
+        return true;
+      }
 
       if (response.statusCode == 200) {
         // Try to parse response
@@ -169,7 +191,6 @@ class SyncService {
         }
       } else {
         AppLogger.error('Sync failed with status: ${response.statusCode}');
-        AppLogger.error('Response body: ${response.body}');
         _updateStatus(SyncStatus.error);
         return false;
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/sync_service.dart';
 import '../services/database_helper.dart';
+import '../models/scan_log.dart';
 import '../utils/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   // Default Google Apps Script URL
   static const String defaultAppScriptUrl =
-      'https://script.google.com/macros/s/AKfycbw0X-aUMO6-09o0fJ1yWl1d-sTMI2EUQ5mpO8SKR1oCIZhSkvwnGqrKVtdbAqSB5Q2KbA/exec';
+      'https://script.google.com/macros/s/AKfycbzeTOW-Wc9Cam1BunoX8A2kRIo871p7T3DZT6x9EQRm3veJnjd6Ztii3tkV1AIjnii80w/exec';
   
   bool _isLoading = true;
   bool _isTesting = false;
@@ -124,6 +125,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showSnackBar(
       value ? 'Auto-sync enabled' : 'Auto-sync disabled',
     );
+  }
+
+  Future<void> _addDummyData() async {
+    try {
+      // Generate random location data for variety
+      final random = DateTime.now().millisecondsSinceEpoch % 3;
+      
+      final List<Map<String, dynamic>> dummyLocations = [
+        {
+          'city': 'Bandung',
+          'address': 'Jl. Asia Afrika No.8, Bandung, Jawa Barat',
+          'lat': -6.914744,
+          'lng': 107.609810,
+        },
+        {
+          'city': 'Jakarta',
+          'address': 'Jl. Thamrin No.1, Jakarta Pusat, DKI Jakarta',
+          'lat': -6.200000,
+          'lng': 106.816666,
+        },
+        {
+          'city': 'Surabaya',
+          'address': 'Jl. Pemuda No.31, Surabaya, Jawa Timur',
+          'lat': -7.250445,
+          'lng': 112.768845,
+        },
+      ];
+      
+      final location = dummyLocations[random];
+      
+      // Generate random UID
+      final now = DateTime.now();
+      final uid = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}:${now.millisecond.toString().padLeft(3, '0').substring(0, 2)}';
+      
+      await _dbHelper.insertScanLog(
+        ScanLog(
+          uid: uid,
+          timestamp: now,
+          latitude: location['lat'] as double,
+          longitude: location['lng'] as double,
+          address: location['address'] as String,
+          city: location['city'] as String,
+          isSynced: false,
+        ),
+      );
+      
+      _showSnackBar('Dummy data added: ${location['city']}');
+      _loadSettings();
+    } catch (e) {
+      _showSnackBar('Error adding dummy data', isError: true);
+    }
   }
 
   Future<void> _clearAllData() async {
@@ -467,6 +519,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _buildStatRow(
                             'Synced Logs',
                             (_totalLogs - _unsyncedLogs).toString(),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: AppTheme.spacingMedium),
+
+                    // Testing Tools
+                    _buildSection(
+                      title: 'Testing Tools',
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryBlue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.add_circle_outline,
+                                color: AppTheme.primaryBlue,
+                              ),
+                            ),
+                            title: const Text(
+                              'Add Dummy Data',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textDark,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Add test scan log for emulator testing',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            onTap: _addDummyData,
+                            contentPadding: EdgeInsets.zero,
                           ),
                         ],
                       ),

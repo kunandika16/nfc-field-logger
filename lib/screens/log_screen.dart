@@ -136,6 +136,57 @@ class LogScreenState extends State<LogScreen> {
     }
   }
 
+  Future<void> _addDummyData() async {
+    try {
+      // Generate random location data
+      final random = DateTime.now().millisecondsSinceEpoch % 3;
+      
+      final List<Map<String, dynamic>> dummyLocations = [
+        {
+          'city': 'Bandung',
+          'address': 'Jl. Asia Afrika No.8, Bandung, Jawa Barat',
+          'lat': -6.914744,
+          'lng': 107.609810,
+        },
+        {
+          'city': 'Jakarta',
+          'address': 'Jl. Thamrin No.1, Jakarta Pusat, DKI Jakarta',
+          'lat': -6.200000,
+          'lng': 106.816666,
+        },
+        {
+          'city': 'Surabaya',
+          'address': 'Jl. Pemuda No.31, Surabaya, Jawa Timur',
+          'lat': -7.250445,
+          'lng': 112.768845,
+        },
+      ];
+      
+      final location = dummyLocations[random];
+      
+      // Generate random UID
+      final now = DateTime.now();
+      final uid = 'TEST:${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+      
+      await _dbHelper.insertScanLog(
+        ScanLog(
+          uid: uid,
+          timestamp: now,
+          latitude: location['lat'] as double,
+          longitude: location['lng'] as double,
+          address: location['address'] as String,
+          city: location['city'] as String,
+          isSynced: false,
+        ),
+      );
+      
+      _showSnackBar('Test data added: ${location['city']} 🎉');
+      _loadData();
+    } catch (e) {
+      _showSnackBar('Error adding test data', isError: true);
+    }
+  }
+
   Future<void> _exportCSV() async {
     setState(() => _isExporting = true);
     
@@ -390,6 +441,12 @@ class LogScreenState extends State<LogScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: _addDummyData,
+                                icon: const Icon(Icons.add_circle_outline),
+                                color: AppTheme.successGreen,
+                                tooltip: 'Add Dummy Data',
+                              ),
                               IconButton(
                                 onPressed: _isExporting ? null : _exportCSV,
                                 icon: _isExporting
