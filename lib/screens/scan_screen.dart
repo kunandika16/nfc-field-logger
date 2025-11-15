@@ -57,6 +57,14 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     });
   }
 
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      _initializeNfc(),
+      _loadStats(),
+      _checkConnectivity(),
+    ]);
+  }
+
   Future<void> _loadStats() async {
     final total = await _dbHelper.getTotalScanCount();
     final unsynced = await _dbHelper.getUnsyncedCount();
@@ -224,9 +232,16 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingLarge),
-          child: Column(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: true,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                  child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header with title and status
@@ -408,6 +423,10 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                     child: _buildStatItem(_syncedCount.toString(), 'Synced'),
                   ),
                 ],
+              ),
+            ],
+                  ),
+                ),
               ),
             ],
           ),
