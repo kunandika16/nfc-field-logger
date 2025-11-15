@@ -100,7 +100,7 @@ class LocationService {
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        AppLogger.info('Geocoding result - Locality: ${place.locality}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
+        AppLogger.info('Geocoding result - Locality: ${place.locality}, SubLocality: ${place.subLocality}, SubAdminArea: ${place.subAdministrativeArea}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
         
         String? fullAddress = [
           place.street,
@@ -109,9 +109,28 @@ class LocationService {
           place.country,
         ].where((s) => s != null && s.isNotEmpty).join(', ');
 
+        // Determine city name: prefer subAdministrativeArea (regency/city level) over locality (which can be district/subdistrict)
+        // For Indonesia: subAdministrativeArea usually contains "Kota" or "Kabupaten" which is the city/regency level
+        String? cityName;
+        if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
+          cityName = place.subAdministrativeArea;
+        } else if (place.locality != null && place.locality!.isNotEmpty) {
+          // Only use locality if it doesn't look like a district name
+          // Districts often have generic names or end with specific suffixes
+          final locality = place.locality!;
+          // Filter out common district-level names
+          final districtKeywords = ['kecamatan', 'kelurahan', 'desa'];
+          final isDistrict = districtKeywords.any((keyword) => 
+            locality.toLowerCase().contains(keyword));
+          
+          if (!isDistrict) {
+            cityName = locality;
+          }
+        }
+
         return {
           'address': fullAddress.isEmpty ? null : fullAddress,
-          'city': place.locality ?? place.administrativeArea,
+          'city': cityName,
           'country': place.country,
           'street': place.street,
           'postalCode': place.postalCode,

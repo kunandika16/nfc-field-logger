@@ -146,6 +146,9 @@ class DatabaseHelper {
       SELECT city, COUNT(*) as count 
       FROM scan_logs 
       WHERE city IS NOT NULL 
+        AND city NOT LIKE '%kecamatan%'
+        AND city NOT LIKE '%kelurahan%'
+        AND city NOT LIKE '%desa%'
       GROUP BY city 
       ORDER BY count DESC 
       LIMIT 1

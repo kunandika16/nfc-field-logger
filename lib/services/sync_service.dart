@@ -22,6 +22,7 @@ class SyncService {
 
   // Keys for SharedPreferences
   static const String _webAppUrlKey = 'google_sheets_web_app_url';
+  static const String _spreadsheetUrlKey = 'google_spreadsheet_url';
   static const String _lastSyncKey = 'last_sync_timestamp';
   static const String _autoSyncKey = 'auto_sync_enabled';
 
@@ -41,6 +42,18 @@ class SyncService {
   Future<String?> getWebAppUrl() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_webAppUrlKey);
+  }
+
+  // Set Google Spreadsheet URL for viewing
+  Future<void> setSpreadsheetUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_spreadsheetUrlKey, url);
+  }
+
+  // Get Google Spreadsheet URL
+  Future<String?> getSpreadsheetUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_spreadsheetUrlKey);
   }
 
   // Enable/disable auto-sync

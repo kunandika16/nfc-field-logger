@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/sync_service.dart';
 import '../services/database_helper.dart';
 import '../utils/app_theme.dart';
@@ -14,6 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final SyncService _syncService = SyncService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _spreadsheetUrlController = TextEditingController();
   
   // Default Google Apps Script URL
   static const String defaultAppScriptUrl =
@@ -22,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _isTesting = false;
   bool _isEditingUrl = false;
+  bool _isEditingSpreadsheetUrl = false;
   bool _autoSyncEnabled = true;
   String? _lastSyncTime;
   int _totalLogs = 0;
@@ -37,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isLoading = true);
     
     final url = await _syncService.getWebAppUrl();
+    final spreadsheetUrl = await _syncService.getSpreadsheetUrl();
     final autoSync = await _syncService.isAutoSyncEnabled();
     final lastSync = _syncService.lastSyncTime;
     final total = await _dbHelper.getTotalScanCount();
@@ -49,6 +53,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else {
       _urlController.text = url;
     }
+
+    _spreadsheetUrlController.text = spreadsheetUrl ?? '';
 
     setState(() {
       _autoSyncEnabled = autoSync;
@@ -398,6 +404,195 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: AppTheme.spacingMedium),
 
+                    // Spreadsheet Viewer
+                    _buildSection(
+                      title: 'View Spreadsheet',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Spreadsheet URL',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textDark,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _isEditingSpreadsheetUrl = !_isEditingSpreadsheetUrl;
+                                  });
+                                },
+                                icon: Icon(
+                                  _isEditingSpreadsheetUrl ? Icons.close : Icons.edit,
+                                  size: 16,
+                                ),
+                                label: Text(_isEditingSpreadsheetUrl ? 'Cancel' : 'Edit'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppTheme.primaryBlue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (_isEditingSpreadsheetUrl)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  controller: _spreadsheetUrlController,
+                                  decoration: InputDecoration(
+                                    hintText: 'https://docs.google.com/spreadsheets/d/...',
+                                    hintStyle: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.lightBackground,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  maxLines: 2,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final url = _spreadsheetUrlController.text.trim();
+                                      if (url.isEmpty) {
+                                        _showSnackBar('Please enter a URL', isError: true);
+                                        return;
+                                      }
+                                      if (!url.startsWith('https://docs.google.com/spreadsheets/')) {
+                                        _showSnackBar('Invalid Google Sheets URL', isError: true);
+                                        return;
+                                      }
+                                      await _syncService.setSpreadsheetUrl(url);
+                                      setState(() => _isEditingSpreadsheetUrl = false);
+                                      _showSnackBar('Spreadsheet URL saved');
+                                    },
+                                    icon: const Icon(Icons.save_outlined, size: 18),
+                                    label: const Text('Save URL'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryBlue,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightBackground,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.table_chart,
+                                        size: 20,
+                                        color: AppTheme.successGreen,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _spreadsheetUrlController.text.isNotEmpty
+                                              ? _spreadsheetUrlController.text
+                                              : 'No spreadsheet URL configured',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textDark,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _spreadsheetUrlController.text.isEmpty
+                                        ? null
+                                        : () async {
+                                            final url = _spreadsheetUrlController.text.trim();
+                                            final uri = Uri.parse(url);
+                                            if (await canLaunchUrl(uri)) {
+                                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                            } else {
+                                              _showSnackBar('Could not open spreadsheet', isError: true);
+                                            }
+                                          },
+                                    icon: const Icon(Icons.open_in_new, size: 18),
+                                    label: const Text('Open Spreadsheet'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.successGreen,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.successGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 16,
+                                  color: AppTheme.successGreen,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Paste your Google Spreadsheet URL here to view synced data.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.successGreen,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: AppTheme.spacingMedium),
+
                     // Sync Settings
                     _buildSection(
                       title: 'Sync Settings',
@@ -595,6 +790,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _urlController.dispose();
+    _spreadsheetUrlController.dispose();
     super.dispose();
   }
 }

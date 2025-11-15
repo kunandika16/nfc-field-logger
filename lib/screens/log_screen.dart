@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/scan_log.dart';
 import 'settings_screen.dart';
 import '../services/database_helper.dart';
@@ -234,14 +235,18 @@ class LogScreenState extends State<LogScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            log.uid,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textDark,
-                              fontFamily: AppTheme.monoFontFamily,
-                              letterSpacing: 0.5,
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              log.uid,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textDark,
+                                fontFamily: AppTheme.monoFontFamily,
+                                letterSpacing: 0.5,
+                              ),
+                              maxLines: 1,
                             ),
                           ),
                         ],
@@ -390,6 +395,24 @@ class LogScreenState extends State<LogScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () async {
+                                  final spreadsheetUrl = await _syncService.getSpreadsheetUrl();
+                                  if (spreadsheetUrl == null || spreadsheetUrl.isEmpty) {
+                                    _showSnackBar('Please configure Spreadsheet URL in Settings', isError: true);
+                                    return;
+                                  }
+                                  final uri = Uri.parse(spreadsheetUrl);
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  } else {
+                                    _showSnackBar('Could not open spreadsheet', isError: true);
+                                  }
+                                },
+                                icon: const Icon(Icons.table_chart_outlined),
+                                color: AppTheme.successGreen,
+                                tooltip: 'Open Spreadsheet',
+                              ),
                               IconButton(
                                 onPressed: _isExporting ? null : _exportCSV,
                                 icon: _isExporting
@@ -595,15 +618,23 @@ class LogScreenState extends State<LogScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textDark,
+          SizedBox(
+            height: 26,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textDark,
+                  ),
+                  maxLines: 1,
+                ),
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
