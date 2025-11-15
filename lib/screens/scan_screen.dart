@@ -163,8 +163,11 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
         );
       }
 
-      // Auto-sync if online
-      _syncService.autoSync();
+      // Auto-sync if online and refresh stats after sync
+      _syncService.autoSync().then((_) {
+        // Reload stats after sync completes to update synced/unsynced counts
+        _loadStats();
+      });
     } catch (e) {
       print('NFC scan error: $e');
       

@@ -105,11 +105,16 @@ class SyncService {
         return true;
       }
 
-      // Prepare data for Google Sheets
+      // Prepare data for Google Sheets with formatted timestamp
       List<Map<String, dynamic>> dataToSync = unsyncedLogs.map((log) {
+        // Format timestamp to readable format: "2025-11-15 17:30:45"
+        final formattedTimestamp = 
+            '${log.timestamp.year}-${log.timestamp.month.toString().padLeft(2, '0')}-${log.timestamp.day.toString().padLeft(2, '0')} ' +
+            '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
+        
         return {
           'uid': log.uid,
-          'timestamp': log.timestamp.toIso8601String(),
+          'timestamp': formattedTimestamp,
           'latitude': log.latitude,
           'longitude': log.longitude,
           'address': log.address ?? '',
@@ -137,8 +142,26 @@ class SyncService {
       );
 
       AppLogger.info('Response status: ${response.statusCode}');
-      AppLogger.info('Response body: ${response.body}');
-
+      AppLogger.info('Response body: ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
+      
+      // Google Apps Script returns 302 redirect after successful execution
+      // This is normal behavior - the data has already been saved
+      if (response.statusCode == 302 || response.statusCode == 301) {
+        AppLogger.info('Got 302 redirect - data saved successfully to Google Sheets');
+        
+        // Mark all logs as synced
+        for (var log in unsyncedLogs) {
+          if (log.id != null) {
+            await _dbHelper.updateSyncStatus(log.id!, true);
+          }
+        }
+        
+        await _saveLastSyncTime();
+        _updateStatus(SyncStatus.online);
+        AppLogger.info('✅ Sync completed successfully (${unsyncedLogs.length} logs)');
+        return true;
+      }
+      
       if (response.statusCode == 200) {
         // Try to parse response
         try {
