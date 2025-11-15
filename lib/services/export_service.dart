@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/scan_log.dart';
 import 'database_helper.dart';
 import '../utils/logger.dart';
@@ -65,26 +65,20 @@ class ExportService {
       // Convert to CSV string
       String csv = const ListToCsvConverter().convert(csvData);
 
-      // Get directory to save file
-      Directory? directory;
-      if (Platform.isAndroid) {
-        // Try to get Downloads directory for Android
-        directory = Directory('/storage/emulated/0/Download');
-        if (!await directory.exists()) {
-          directory = await getExternalStorageDirectory();
-        }
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory == null) {
-        throw Exception('Could not access storage directory');
-      }
-
-      // Create filename with timestamp
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      // Create filename with timestamp (YYYY-MM-DD_HH-mm-ss)
+      final now = DateTime.now();
+      final timestamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
       final filename = 'nfc_logs_$timestamp.csv';
-      final filePath = '${directory.path}/$filename';
+
+      // Let user pick directory
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      
+      if (selectedDirectory == null) {
+        // User cancelled
+        return null;
+      }
+
+      final filePath = '$selectedDirectory/$filename';
 
       // Write to file
       final file = File(filePath);
@@ -121,25 +115,20 @@ class ExportService {
       // Convert to CSV string
       String csv = const ListToCsvConverter().convert(csvData);
 
-      // Get directory to save file
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/Download');
-        if (!await directory.exists()) {
-          directory = await getExternalStorageDirectory();
-        }
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory == null) {
-        throw Exception('Could not access storage directory');
-      }
-
-      // Create filename
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      // Create filename (YYYY-MM-DD_HH-mm-ss)
+      final now = DateTime.now();
+      final timestamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
       final filename = 'nfc_logs_$timestamp.csv';
-      final filePath = '${directory.path}/$filename';
+
+      // Let user pick directory
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      
+      if (selectedDirectory == null) {
+        // User cancelled
+        return null;
+      }
+
+      final filePath = '$selectedDirectory/$filename';
 
       // Write to file
       final file = File(filePath);

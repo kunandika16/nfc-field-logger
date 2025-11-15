@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 import '../models/scan_log.dart';
 import 'settings_screen.dart';
 import '../services/database_helper.dart';
 import '../services/sync_service.dart';
 import '../services/export_service.dart';
 import '../utils/app_theme.dart';
+import '../services/google_sheets_service.dart';
 
 class LogScreen extends StatefulWidget {
   const LogScreen({Key? key}) : super(key: key);
@@ -31,7 +32,6 @@ class LogScreenState extends State<LogScreen> {
   String? _mostActiveCity;
   DateTime? _lastSyncTime;
   bool _isLoading = true;
-  bool _isOnline = false;
   bool _isSyncing = false;
   bool _isExporting = false;
   final TextEditingController _searchController = TextEditingController();
@@ -40,14 +40,7 @@ class LogScreenState extends State<LogScreen> {
   void initState() {
     super.initState();
     _loadData();
-    _checkConnectivity();
     _loadLastSyncTime();
-    // Listen to connectivity changes
-    Connectivity().onConnectivityChanged.listen((result) {
-      setState(() {
-        _isOnline = result != ConnectivityResult.none;
-      });
-    });
   }
 
   @override
@@ -56,13 +49,6 @@ class LogScreenState extends State<LogScreen> {
     // Refresh data when returning to this screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
-    });
-  }
-
-  Future<void> _checkConnectivity() async {
-    final result = await Connectivity().checkConnectivity();
-    setState(() {
-      _isOnline = result != ConnectivityResult.none;
     });
   }
 
@@ -148,6 +134,40 @@ class LogScreenState extends State<LogScreen> {
       _showSnackBar('Exported to: $filePath');
     } else {
       _showSnackBar('Export failed', isError: true);
+    }
+  }
+
+  Future<void> _openSpreadsheetQuick() async {
+    try {
+      String? url = await _syncService.getSpreadsheetUrl();
+      if (url == null || url.isEmpty) {
+        final id = await GoogleSheetsService().getSavedSpreadsheetId();
+        if (id != null && id.isNotEmpty) {
+          url = GoogleSheetsService().getSpreadsheetUrl(id);
+        }
+      }
+      if (url == null || url.isEmpty) {
+        _showSnackBar('Spreadsheet belum dikonfigurasi. Gunakan Easy Setup atau set URL di Settings.', isError: true);
+        return;
+      }
+      final uri = Uri.parse(url);
+      // 1) Coba external app (Sheets / browser)
+      if (await canLaunchUrl(uri)) {
+        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (ok) return;
+      }
+      // 2) Coba in-app browser view
+      final okInApp = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      if (okInApp) return;
+      // 3) Coba default
+      final okDefault = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      if (okDefault) return;
+
+      // 4) Gagal semua -> salin ke clipboard
+      await Clipboard.setData(ClipboardData(text: url));
+      _showSnackBar('Gagal membuka. Link disalin ke clipboard:\n$url', isError: true);
+    } catch (e) {
+      _showSnackBar('Error membuka spreadsheet: $e', isError: true);
     }
   }
 
@@ -362,53 +382,8 @@ class LogScreenState extends State<LogScreen> {
                           ),
                           Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: (_isOnline ? AppTheme.successGreen : AppTheme.errorRed).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _isOnline ? 'Online' : 'Offline',
-                                      style: TextStyle(
-                                        color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
                               IconButton(
-                                onPressed: () async {
-                                  final spreadsheetUrl = await _syncService.getSpreadsheetUrl();
-                                  if (spreadsheetUrl == null || spreadsheetUrl.isEmpty) {
-                                    _showSnackBar('Please configure Spreadsheet URL in Settings', isError: true);
-                                    return;
-                                  }
-                                  final uri = Uri.parse(spreadsheetUrl);
-                                  if (await canLaunchUrl(uri)) {
-                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                  } else {
-                                    _showSnackBar('Could not open spreadsheet', isError: true);
-                                  }
-                                },
+                                onPressed: _openSpreadsheetQuick,
                                 icon: const Icon(Icons.table_chart_outlined),
                                 color: AppTheme.successGreen,
                                 tooltip: 'Open Spreadsheet',

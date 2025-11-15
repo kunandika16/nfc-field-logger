@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_log.dart';
 import 'database_helper.dart';
+import 'google_sheets_service.dart';
 import '../utils/logger.dart';
 
 enum SyncStatus { online, offline, syncing, error }
@@ -97,16 +98,6 @@ class SyncService {
 
       _updateStatus(SyncStatus.online);
 
-      // Get Web App URL
-      final webAppUrl = await getWebAppUrl();
-      AppLogger.info('Web App URL: $webAppUrl');
-      
-      if (webAppUrl == null || webAppUrl.isEmpty) {
-        AppLogger.warning('Google Sheets Web App URL not configured');
-        _updateStatus(SyncStatus.error);
-        return false;
-      }
-
       // Get unsynced logs
       List<ScanLog> unsyncedLogs = await _dbHelper.getUnsyncedLogs();
       AppLogger.info('Found ${unsyncedLogs.length} unsynced logs');
@@ -116,6 +107,40 @@ class SyncService {
         _updateStatus(SyncStatus.online);
         await _saveLastSyncTime();
         return true;
+      }
+
+      // PRIORITY 1: Try Easy Setup (Google Sheets API) if configured
+      final sheetsService = GoogleSheetsService();
+      final spreadsheetId = await sheetsService.getSavedSpreadsheetId();
+      
+      if (spreadsheetId != null && spreadsheetId.isNotEmpty) {
+        AppLogger.info('Using Easy Setup spreadsheet: $spreadsheetId');
+        final success = await sheetsService.appendData(spreadsheetId, unsyncedLogs);
+        
+        if (success) {
+          // Mark all logs as synced
+          for (var log in unsyncedLogs) {
+            if (log.id != null) {
+              await _dbHelper.updateSyncStatus(log.id!, true);
+            }
+          }
+          await _saveLastSyncTime();
+          _updateStatus(SyncStatus.online);
+          AppLogger.info('✅ Synced to Easy Setup spreadsheet (${unsyncedLogs.length} logs)');
+          return true;
+        } else {
+          AppLogger.warning('Easy Setup sync failed, falling back to Apps Script...');
+        }
+      }
+
+      // PRIORITY 2: Fallback to Apps Script URL (manual setup)
+      final webAppUrl = await getWebAppUrl();
+      AppLogger.info('Web App URL: $webAppUrl');
+      
+      if (webAppUrl == null || webAppUrl.isEmpty) {
+        AppLogger.warning('No sync method configured (no Easy Setup and no Apps Script URL)');
+        _updateStatus(SyncStatus.error);
+        return false;
       }
 
       // Prepare data for Google Sheets with formatted timestamp

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 import '../services/sync_service.dart';
 import '../services/database_helper.dart';
 import '../utils/app_theme.dart';
+// import 'google_sheets_setup_screen.dart'; // Hidden - requires OAuth verification
+import '../services/google_sheets_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -124,6 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+
   Future<void> _toggleAutoSync(bool value) async {
     await _syncService.setAutoSync(value);
     setState(() => _autoSyncEnabled = value);
@@ -215,6 +219,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Easy Setup with Google Sign-In (hidden - requires OAuth verification)
+                          /*
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.successGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.successGreen.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.auto_awesome, color: AppTheme.successGreen, size: 24),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Easy Setup (Recommended)',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.successGreen,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Sign in & create spreadsheet automatically',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppTheme.successGreen.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const GoogleSheetsSetupScreen(),
+                                        ),
+                                      ).then((_) => _loadSettings());
+                                    },
+                                    icon: const Icon(Icons.login, size: 18),
+                                    label: const Text('Easy Setup with Google'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.successGreen,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Divider(),
+                          const SizedBox(height: 12),
+                          Text(
+                            'OR Manual Setup (Advanced)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          */
+                          // Apps Script Setup
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -534,17 +618,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
-                                    onPressed: _spreadsheetUrlController.text.isEmpty
-                                        ? null
-                                        : () async {
-                                            final url = _spreadsheetUrlController.text.trim();
-                                            final uri = Uri.parse(url);
-                                            if (await canLaunchUrl(uri)) {
-                                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                            } else {
-                                              _showSnackBar('Could not open spreadsheet', isError: true);
-                                            }
-                                          },
+                                    onPressed: () async {
+                                      try {
+                                        // Ambil manual URL jika ada
+                                        String? url = _spreadsheetUrlController.text.trim().isNotEmpty
+                                            ? _spreadsheetUrlController.text.trim()
+                                            : null;
+                                        // Jika kosong, fallback ke Easy Setup
+                                        if (url == null) {
+                                          final id = await GoogleSheetsService().getSavedSpreadsheetId();
+                                          if (id != null && id.isNotEmpty) {
+                                            url = GoogleSheetsService().getSpreadsheetUrl(id);
+                                          }
+                                        }
+                                        if (url == null) {
+                                          _showSnackBar('Spreadsheet belum dikonfigurasi. Gunakan Easy Setup atau set URL manual.', isError: true);
+                                          return;
+                                        }
+                                        final uri = Uri.parse(url);
+                                        // 1) External app
+                                        if (await canLaunchUrl(uri)) {
+                                          final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                          if (ok) return;
+                                        }
+                                        // 2) In-app browser view
+                                        final okInApp = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+                                        if (okInApp) return;
+                                        // 3) Default
+                                        final okDefault = await launchUrl(uri, mode: LaunchMode.platformDefault);
+                                        if (okDefault) return;
+
+                                        // 4) Fallback: salin link
+                                        await Clipboard.setData(ClipboardData(text: url));
+                                        _showSnackBar('Gagal membuka. Link disalin ke clipboard:\n$url', isError: true);
+                                      } catch (e) {
+                                        _showSnackBar('Error membuka spreadsheet: $e', isError: true);
+                                      }
+                                    },
                                     icon: const Icon(Icons.open_in_new, size: 18),
                                     label: const Text('Open Spreadsheet'),
                                     style: ElevatedButton.styleFrom(

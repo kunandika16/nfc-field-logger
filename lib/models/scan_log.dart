@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class ScanLog {
   final int? id;
   final String uid;
@@ -49,9 +51,10 @@ class ScanLog {
 
   // Convert to CSV row
   List<String> toCsvRow() {
+    final formattedTimestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(timestamp.toLocal());
     return [
       uid,
-      timestamp.toIso8601String(),
+      formattedTimestamp,
       latitude?.toString() ?? '',
       longitude?.toString() ?? '',
       address ?? '',
