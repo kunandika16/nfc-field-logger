@@ -12,6 +12,7 @@ import '../widgets/nfc_success_dialog.dart';
 import '../services/device_info_service.dart';
 import '../services/user_profile_service.dart';
 import '../widgets/nfc_error_dialog.dart';
+import '../utils/logger.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({Key? key}) : super(key: key);

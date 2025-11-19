@@ -41,6 +41,11 @@ class NfcService {
   bool get isAvailable => _isAvailable;
   bool get isScanning => _isScanning;
 
+  // Alias for checkNfcAvailability for backward compatibility
+  Future<bool> checkAvailability() async {
+    return await checkNfcAvailability();
+  }
+
   // Start NFC session and scan for a tag
   Future<NfcTagData?> scanNfcTag() async {
     if (!_isAvailable) {

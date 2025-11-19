@@ -3,7 +3,6 @@ import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_log.dart';
-import '../utils/logger.dart';
 import 'sync_service.dart';
 
 class GoogleSheetsService {
@@ -56,6 +55,7 @@ class GoogleSheetsService {
     } catch (e) {
       return null;
     }
+  }
 
   // Sign out
   Future<void> signOut() async {
