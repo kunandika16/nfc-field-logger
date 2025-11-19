@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/scan_log.dart';
 import 'database_helper.dart';
 import 'google_sheets_service.dart';
-import '../utils/logger.dart';
 
 enum SyncStatus { online, offline, syncing, error }
 
@@ -22,7 +21,8 @@ class SyncService {
   DateTime? get lastSyncTime => _lastSyncTime;
 
   // Hardcoded Apps Script Web App URL
-  static const String _hardcodedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxWJauXUbi_tm1HrgS2sVgALdSQr9QILgCSzMEpL0KTllNy0r-8Aj18dMZAeVXu_IIILw/exec';
+  static const String _hardcodedWebAppUrl =
+      'https://script.google.com/macros/s/AKfycbyQa3lLY_p6ApbwbJRqfPW0ABHSO8S70uu_E9OwEqpKRDOfS89H1x-M7Wtq8ENX8jeraQ/exec';
 
   // Keys for SharedPreferences
   static const String _webAppUrlKey = 'google_sheets_web_app_url';
@@ -88,12 +88,10 @@ class SyncService {
   // Sync unsynced logs to Google Sheets
   Future<bool> syncLogs() async {
     try {
-      AppLogger.info('Starting sync process...');
       _updateStatus(SyncStatus.syncing);
 
       // Check internet connection
       if (!await isOnline()) {
-        AppLogger.warning('Device is offline');
         _updateStatus(SyncStatus.offline);
         return false;
       }
@@ -102,10 +100,8 @@ class SyncService {
 
       // Get unsynced logs
       List<ScanLog> unsyncedLogs = await _dbHelper.getUnsyncedLogs();
-      AppLogger.info('Found ${unsyncedLogs.length} unsynced logs');
-      
+
       if (unsyncedLogs.isEmpty) {
-        AppLogger.info('No logs to sync');
         _updateStatus(SyncStatus.online);
         await _saveLastSyncTime();
         return true;
@@ -116,9 +112,9 @@ class SyncService {
       final spreadsheetId = await sheetsService.getSavedSpreadsheetId();
       
       if (spreadsheetId != null && spreadsheetId.isNotEmpty) {
-        AppLogger.info('Using Easy Setup spreadsheet: $spreadsheetId');
-        final success = await sheetsService.appendData(spreadsheetId, unsyncedLogs);
-        
+        final success =
+            await sheetsService.appendData(spreadsheetId, unsyncedLogs);
+
         if (success) {
           // Mark all logs as synced
           for (var log in unsyncedLogs) {
@@ -128,19 +124,14 @@ class SyncService {
           }
           await _saveLastSyncTime();
           _updateStatus(SyncStatus.online);
-          AppLogger.info('✅ Synced to Easy Setup spreadsheet (${unsyncedLogs.length} logs)');
           return true;
-        } else {
-          AppLogger.warning('Easy Setup sync failed, falling back to Apps Script...');
         }
       }
 
       // PRIORITY 2: Fallback to Apps Script URL (manual setup)
       final webAppUrl = await getWebAppUrl();
-      AppLogger.info('Web App URL: $webAppUrl');
-      
+
       if (webAppUrl == null || webAppUrl.isEmpty) {
-        AppLogger.warning('No sync method configured (no Easy Setup and no Apps Script URL)');
         _updateStatus(SyncStatus.error);
         return false;
       }
@@ -148,10 +139,10 @@ class SyncService {
       // Prepare data for Google Sheets with formatted timestamp
       List<Map<String, dynamic>> dataToSync = unsyncedLogs.map((log) {
         // Format timestamp to readable format: "2025-11-15 17:30:45"
-        final formattedTimestamp = 
+        final formattedTimestamp =
             '${log.timestamp.year}-${log.timestamp.month.toString().padLeft(2, '0')}-${log.timestamp.day.toString().padLeft(2, '0')} ' +
-            '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
-        
+                '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
+
         return {
           'uid': log.uid,
           'timestamp': formattedTimestamp,
@@ -159,55 +150,51 @@ class SyncService {
           'longitude': log.longitude,
           'address': log.address ?? '',
           'city': log.city ?? '',
+          'user_name': log.userName ?? '',
+          'user_class': log.userClass ?? '',
+          'device_info': log.deviceInfo ?? '',
         };
       }).toList();
 
       final requestBody = jsonEncode({'logs': dataToSync});
-      AppLogger.info('Request body: $requestBody');
 
       // Send to Google Sheets via Web App
-      AppLogger.info('Sending POST request to Google Sheets...');
-      final response = await http.post(
+      final response = await http
+          .post(
         Uri.parse(webAppUrl),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: requestBody,
-      ).timeout(
+      )
+          .timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           throw Exception('Request timeout after 30 seconds');
         },
       );
 
-      AppLogger.info('Response status: ${response.statusCode}');
-      AppLogger.info('Response body: ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
-      
       // Google Apps Script returns 302 redirect after successful execution
       // This is normal behavior - the data has already been saved
       if (response.statusCode == 302 || response.statusCode == 301) {
-        AppLogger.info('Got 302 redirect - data saved successfully to Google Sheets');
-        
         // Mark all logs as synced
         for (var log in unsyncedLogs) {
           if (log.id != null) {
             await _dbHelper.updateSyncStatus(log.id!, true);
           }
         }
-        
+
         await _saveLastSyncTime();
         _updateStatus(SyncStatus.online);
-        AppLogger.info('✅ Sync completed successfully (${unsyncedLogs.length} logs)');
         return true;
       }
-      
+
       if (response.statusCode == 200) {
         // Try to parse response
         try {
           final responseData = jsonDecode(response.body);
-          AppLogger.info('Sync response: $responseData');
-          
+
           if (responseData['status'] == 'success') {
             // Mark all logs as synced
             for (var log in unsyncedLogs) {
@@ -218,26 +205,20 @@ class SyncService {
 
             await _saveLastSyncTime();
             _updateStatus(SyncStatus.online);
-            AppLogger.info('Sync completed successfully');
             return true;
           } else {
-            AppLogger.error('Sync failed: ${responseData['message']}');
             _updateStatus(SyncStatus.error);
             return false;
           }
         } catch (e) {
-          AppLogger.error('Error parsing response', e);
           _updateStatus(SyncStatus.error);
           return false;
         }
       } else {
-        AppLogger.error('Sync failed with status: ${response.statusCode}');
-        AppLogger.error('Response body: ${response.body}');
         _updateStatus(SyncStatus.error);
         return false;
       }
     } catch (e) {
-      AppLogger.error('Error syncing', e);
       _updateStatus(SyncStatus.error);
       return false;
     }

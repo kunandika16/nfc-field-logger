@@ -63,7 +63,8 @@ class ScanLog {
 
   // Convert to CSV row
   List<String> toCsvRow() {
-    final formattedTimestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(timestamp.toLocal());
+    final formattedTimestamp =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(timestamp.toLocal());
     return [
       uid,
       userName ?? '',

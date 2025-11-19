@@ -111,7 +111,8 @@ class NfcErrorDialog extends StatelessWidget {
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.textDark,
-                  side: BorderSide(color: AppTheme.textSecondary.withOpacity(0.3)),
+                  side: BorderSide(
+                      color: AppTheme.textSecondary.withOpacity(0.3)),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),

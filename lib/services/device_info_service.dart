@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+import '../utils/logger.dart';
 
 class DeviceInfoService {
   static final DeviceInfoService _instance = DeviceInfoService._internal();
@@ -12,9 +13,8 @@ class DeviceInfoService {
     try {
       if (Platform.isAndroid) {
         final info = await _deviceInfoPlugin.androidInfo;
-        // Debug print full info once (can comment out later)
-        // ignore: avoid_print
-        print('[DeviceInfo] androidInfo: manufacturer=${info.manufacturer}, brand=${info.brand}, model=${info.model}, device=${info.device}, product=${info.product}, hardware=${info.hardware}, host=${info.host}, board=${info.board}, fingerprint=${info.fingerprint}');
+        // Log device info for debugging
+        AppLogger.debug('Device info: ${info.manufacturer} ${info.model}');
 
         final manufacturer = (info.manufacturer ?? '').trim();
         final brand = (info.brand ?? '').trim();
@@ -39,14 +39,18 @@ class DeviceInfoService {
 
         final parts = [
           if (vendor.isNotEmpty) vendor,
-          if (modelPart.isNotEmpty && modelPart.toLowerCase() != vendor.toLowerCase()) modelPart,
+          if (modelPart.isNotEmpty &&
+              modelPart.toLowerCase() != vendor.toLowerCase())
+            modelPart,
         ];
 
         final result = parts.join(' - ').trim();
         if (result.isEmpty) {
           // As last resort use fingerprint shortened
           if (fingerprint.isNotEmpty) {
-            final shortFp = fingerprint.length > 28 ? fingerprint.substring(0, 28) : fingerprint;
+            final shortFp = fingerprint.length > 28
+                ? fingerprint.substring(0, 28)
+                : fingerprint;
             return 'Device (${shortFp})';
           }
           return 'Unknown Device';
@@ -57,9 +61,7 @@ class DeviceInfoService {
         final name = (info.name ?? '').trim();
         final model = (info.model ?? '').trim();
         final system = info.systemVersion ?? '';
-        final parts = [name, model]
-            .where((e) => e.isNotEmpty)
-            .toList();
+        final parts = [name, model].where((e) => e.isNotEmpty).toList();
         final result = parts.join(' - ').trim();
         if (result.isEmpty) return 'iOS Device';
         return result;
@@ -73,14 +75,14 @@ class DeviceInfoService {
         return [name, version].where((e) => e.isNotEmpty).join(' ');
       } else if (Platform.isWindows) {
         final info = await _deviceInfoPlugin.windowsInfo;
-        final displayVersion = info.displayVersion ?? info.productName ?? 'Windows';
+        final displayVersion =
+            info.displayVersion ?? info.productName ?? 'Windows';
         return displayVersion;
       }
       return 'Unknown Device';
     } catch (e) {
       // Log the error for debugging
-      // ignore: avoid_print
-      print('DeviceInfoService error: $e');
+      AppLogger.error('DeviceInfoService error', e);
       return 'Unknown Device';
     }
   }

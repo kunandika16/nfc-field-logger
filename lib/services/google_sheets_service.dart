@@ -37,7 +37,7 @@ class GoogleSheetsService {
     try {
       await _googleSignIn.signInSilently();
     } catch (e) {
-      AppLogger.error('Error signing in silently', e);
+      // Silent sign in failed - will require manual sign in
     }
   }
 
@@ -54,10 +54,8 @@ class GoogleSheetsService {
       }
       return account;
     } catch (e) {
-      AppLogger.error('Error signing in', e);
       return null;
     }
-  }
 
   // Sign out
   Future<void> signOut() async {
@@ -88,37 +86,64 @@ class GoogleSheetsService {
                   sheets.RowData(
                     values: [
                       sheets.CellData(
-                        userEnteredValue: sheets.ExtendedValue(stringValue: 'UID'),
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'UID'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
                         ),
                       ),
                       sheets.CellData(
-                        userEnteredValue: sheets.ExtendedValue(stringValue: 'Timestamp'),
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'Timestamp'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
                         ),
                       ),
                       sheets.CellData(
-                        userEnteredValue: sheets.ExtendedValue(stringValue: 'Latitude'),
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'Latitude'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
                         ),
                       ),
                       sheets.CellData(
-                        userEnteredValue: sheets.ExtendedValue(stringValue: 'Longitude'),
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'Longitude'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
                         ),
                       ),
                       sheets.CellData(
-                        userEnteredValue: sheets.ExtendedValue(stringValue: 'Address'),
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'Address'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
                         ),
                       ),
                       sheets.CellData(
-                        userEnteredValue: sheets.ExtendedValue(stringValue: 'City'),
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'City'),
+                        userEnteredFormat: sheets.CellFormat(
+                          textFormat: sheets.TextFormat(bold: true),
+                        ),
+                      ),
+                      sheets.CellData(
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'user_name'),
+                        userEnteredFormat: sheets.CellFormat(
+                          textFormat: sheets.TextFormat(bold: true),
+                        ),
+                      ),
+                      sheets.CellData(
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'user_class'),
+                        userEnteredFormat: sheets.CellFormat(
+                          textFormat: sheets.TextFormat(bold: true),
+                        ),
+                      ),
+                      sheets.CellData(
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'device_info'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
                         ),
@@ -133,7 +158,7 @@ class GoogleSheetsService {
       );
 
       final created = await _sheetsApi!.spreadsheets.create(spreadsheet);
-      
+
       if (created.spreadsheetId != null) {
         await saveSpreadsheetId(created.spreadsheetId!, title);
         final url = getSpreadsheetUrl(created.spreadsheetId!);
@@ -147,7 +172,6 @@ class GoogleSheetsService {
       }
       return null;
     } catch (e) {
-      AppLogger.error('Error creating spreadsheet', e);
       return null;
     }
   }
@@ -164,34 +188,71 @@ class GoogleSheetsService {
       }
 
       final values = logs.map((log) {
-        final formattedTimestamp = 
+        final formattedTimestamp =
             '${log.timestamp.year}-${log.timestamp.month.toString().padLeft(2, '0')}-${log.timestamp.day.toString().padLeft(2, '0')} ' +
-            '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
-        
-        return [
+                '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}';
+
+        final row = [
           log.uid,
           formattedTimestamp,
           log.latitude?.toString() ?? '',
           log.longitude?.toString() ?? '',
           log.address ?? '',
           log.city ?? '',
+          log.userName ?? '',
+          log.userClass ?? '',
+          log.deviceInfo ?? '',
         ];
+        
+        return row;
       }).toList();
 
       final valueRange = sheets.ValueRange(
         values: values,
       );
 
-      await _sheetsApi!.spreadsheets.values.append(
+      final response = await _sheetsApi!.spreadsheets.values.append(
         valueRange,
         spreadsheetId,
-        'Scan Logs!A:F',
+        'Scan Logs!A:I',
         valueInputOption: 'RAW',
       );
 
       return true;
     } catch (e) {
-      AppLogger.error('Error appending data to spreadsheet', e);
+      return false;
+    }
+  }
+
+  // Update existing spreadsheet headers to include missing columns
+  Future<bool> updateSpreadsheetHeaders(String spreadsheetId) async {
+    try {
+      if (_sheetsApi == null) {
+        final auth = await _googleSignIn.authenticatedClient();
+        if (auth == null) {
+          throw Exception('Not authenticated');
+        }
+        _sheetsApi = sheets.SheetsApi(auth);
+      }
+
+      // Add missing headers if they don't exist
+      final headerValues = [
+        ['user_name', 'user_class', 'device_info']
+      ];
+
+      final valueRange = sheets.ValueRange(
+        values: headerValues,
+      );
+
+      await _sheetsApi!.spreadsheets.values.update(
+        valueRange,
+        spreadsheetId,
+        'Scan Logs!G1:I1',
+        valueInputOption: 'RAW',
+      );
+
+      return true;
+    } catch (e) {
       return false;
     }
   }

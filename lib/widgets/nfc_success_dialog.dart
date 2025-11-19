@@ -23,7 +23,7 @@ class NfcSuccessDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.height < 600;
-    
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: EdgeInsets.symmetric(
@@ -123,7 +123,7 @@ class NfcSuccessDialog extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // User Info Section (if available)
-                    if ((userName != null && userName!.isNotEmpty) || 
+                    if ((userName != null && userName!.isNotEmpty) ||
                         (userClass != null && userClass!.isNotEmpty))
                       _buildUserInfoSection(),
 
@@ -283,8 +283,10 @@ class NfcSuccessDialog extends StatelessWidget {
               value: userName!,
               iconColor: AppTheme.successGreen,
             ),
-          if (userName != null && userName!.isNotEmpty && 
-              userClass != null && userClass!.isNotEmpty)
+          if (userName != null &&
+              userName!.isNotEmpty &&
+              userClass != null &&
+              userClass!.isNotEmpty)
             const SizedBox(height: 12),
           if (userClass != null && userClass!.isNotEmpty)
             _buildCompactDetailRow(
@@ -333,14 +335,18 @@ class NfcSuccessDialog extends StatelessWidget {
           _buildCompactDetailRow(
             icon: Icons.location_city,
             label: 'Kota',
-            value: (scanLog.city == null || scanLog.city!.isEmpty) ? 'Tidak diketahui' : scanLog.city!,
+            value: (scanLog.city == null || scanLog.city!.isEmpty)
+                ? 'Tidak diketahui'
+                : scanLog.city!,
             iconColor: AppTheme.warningOrange,
           ),
           const SizedBox(height: 12),
           _buildCompactDetailRow(
             icon: Icons.location_on,
             label: 'Alamat',
-            value: (scanLog.address == null || scanLog.address!.isEmpty) ? 'Tidak diketahui' : scanLog.address!,
+            value: (scanLog.address == null || scanLog.address!.isEmpty)
+                ? 'Tidak diketahui'
+                : scanLog.address!,
             iconColor: AppTheme.warningOrange,
           ),
           if (scanLog.latitude != null && scanLog.longitude != null) ...[
@@ -348,7 +354,8 @@ class NfcSuccessDialog extends StatelessWidget {
             _buildCompactDetailRow(
               icon: Icons.my_location,
               label: 'Koordinat',
-              value: '${scanLog.latitude!.toStringAsFixed(6)}, ${scanLog.longitude!.toStringAsFixed(6)}',
+              value:
+                  '${scanLog.latitude!.toStringAsFixed(6)}, ${scanLog.longitude!.toStringAsFixed(6)}',
               iconColor: AppTheme.warningOrange,
             ),
           ],

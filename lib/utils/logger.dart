@@ -1,30 +1,56 @@
-import 'package:logger/logger.dart';
+import 'dart:developer' as developer;
+
+enum LogLevel { debug, info, warning, error }
 
 class AppLogger {
-  static final Logger _logger = Logger(
-    printer: PrettyPrinter(
-      methodCount: 0,
-      errorMethodCount: 5,
-      lineLength: 80,
-      colors: true,
-      printEmojis: true,
-      dateTimeFormat: DateTimeFormat.none,
-    ),
-  );
+  static const String _name = 'NFC_FIELD_LOGGER';
+  static LogLevel _minLevel = LogLevel.debug;
 
-  static void debug(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.d(message, error: error, stackTrace: stackTrace);
+  static void setMinLevel(LogLevel level) {
+    _minLevel = level;
   }
 
-  static void info(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.i(message, error: error, stackTrace: stackTrace);
+  static void debug(String message, [Object? error]) {
+    if (_minLevel.index <= LogLevel.debug.index) {
+      developer.log(
+        message,
+        name: _name,
+        level: 500, // Debug level
+        error: error,
+      );
+    }
   }
 
-  static void warning(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.w(message, error: error, stackTrace: stackTrace);
+  static void info(String message, [Object? error]) {
+    if (_minLevel.index <= LogLevel.info.index) {
+      developer.log(
+        message,
+        name: _name,
+        level: 800, // Info level
+        error: error,
+      );
+    }
   }
 
-  static void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.e(message, error: error, stackTrace: stackTrace);
+  static void warning(String message, [Object? error]) {
+    if (_minLevel.index <= LogLevel.warning.index) {
+      developer.log(
+        message,
+        name: _name,
+        level: 900, // Warning level
+        error: error,
+      );
+    }
+  }
+
+  static void error(String message, [Object? error]) {
+    if (_minLevel.index <= LogLevel.error.index) {
+      developer.log(
+        message,
+        name: _name,
+        level: 1000, // Error level
+        error: error,
+      );
+    }
   }
 }

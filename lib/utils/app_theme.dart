@@ -10,7 +10,7 @@ class AppTheme {
   static const Color successGreen = Color(0xFF10B981);
   static const Color errorRed = Color(0xFFEF4444);
   static const Color warningOrange = Color(0xFFF59E0B);
-  
+
   // Light theme colors
   static const Color lightBackground = Color(0xFFF5F7FA);
   static const Color textDark = Color(0xFF1E293B);
@@ -23,7 +23,7 @@ class AppTheme {
   static const double spacingSmall = 8.0;
   static const double spacingMedium = 16.0;
   static const double spacingLarge = 24.0;
-  
+
   // Border radius
   static const double radiusSmall = 8.0;
   static const double radiusMedium = 16.0;
@@ -48,7 +48,7 @@ class AppTheme {
         onBackground: textPrimary,
         onError: Colors.white,
       ),
-      
+
       // Card theme
       cardTheme: CardTheme(
         color: cardBackground,
@@ -57,7 +57,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusMedium),
         ),
       ),
-      
+
       // AppBar theme
       appBarTheme: AppBarTheme(
         backgroundColor: darkBackground,
@@ -71,7 +71,7 @@ class AppTheme {
           fontFamily: fontFamily,
         ),
       ),
-      
+
       // Text theme
       textTheme: TextTheme(
         displayLarge: TextStyle(
@@ -135,7 +135,7 @@ class AppTheme {
           fontFamily: fontFamily,
         ),
       ),
-      
+
       // Floating Action Button theme
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primaryBlue,
@@ -145,7 +145,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusMedium),
         ),
       ),
-      
+
       // Chip theme
       chipTheme: ChipThemeData(
         backgroundColor: cardBackground,
@@ -159,7 +159,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusSmall),
         ),
       ),
-      
+
       // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -177,13 +177,13 @@ class AppTheme {
           vertical: spacingMedium,
         ),
       ),
-      
+
       // Icon theme
       iconTheme: IconThemeData(
         color: textPrimary,
         size: 24,
       ),
-      
+
       // Bottom Navigation Bar theme
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: cardBackground,
@@ -192,7 +192,7 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
-      
+
       // Divider theme
       dividerTheme: DividerThemeData(
         color: textSecondary.withOpacity(0.2),

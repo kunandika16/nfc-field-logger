@@ -9,6 +9,7 @@ import '../services/sync_service.dart';
 import '../services/export_service.dart';
 import '../utils/app_theme.dart';
 import '../services/google_sheets_service.dart';
+import '../utils/logger.dart';
 
 class LogScreen extends StatefulWidget {
   const LogScreen({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class LogScreenState extends State<LogScreen> {
   void refreshData() {
     _loadData();
   }
+
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final SyncService _syncService = SyncService();
   final ExportService _exportService = ExportService();
@@ -60,7 +62,6 @@ class LogScreenState extends State<LogScreen> {
   }
 
   Future<void> _loadData() async {
-    print('Loading log data...');
     setState(() {
       _isLoading = true;
     });
@@ -70,8 +71,6 @@ class LogScreenState extends State<LogScreen> {
       final totalScans = await _dbHelper.getTotalScanCount();
       final mostActiveCity = await _dbHelper.getMostActiveCity();
 
-      print('Loaded ${logs.length} logs, total scans: $totalScans');
-
       setState(() {
         _logs = logs;
         _filteredLogs = logs;
@@ -79,10 +78,9 @@ class LogScreenState extends State<LogScreen> {
         _mostActiveCity = mostActiveCity;
         _isLoading = false;
       });
-      
+
       _applyFilters();
     } catch (e) {
-      print('Error loading data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -96,11 +94,25 @@ class LogScreenState extends State<LogScreen> {
     if (_searchController.text.isNotEmpty) {
       filtered = filtered
           .where((log) =>
-              log.uid.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-              (log.city?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
-              (log.address?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
-              (log.userName?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
-              (log.userClass?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false))
+              log.uid
+                  .toLowerCase()
+                  .contains(_searchController.text.toLowerCase()) ||
+              (log.city
+                      ?.toLowerCase()
+                      .contains(_searchController.text.toLowerCase()) ??
+                  false) ||
+              (log.address
+                      ?.toLowerCase()
+                      .contains(_searchController.text.toLowerCase()) ??
+                  false) ||
+              (log.userName
+                      ?.toLowerCase()
+                      .contains(_searchController.text.toLowerCase()) ??
+                  false) ||
+              (log.userClass
+                      ?.toLowerCase()
+                      .contains(_searchController.text.toLowerCase()) ??
+                  false))
           .toList();
     }
 
@@ -111,11 +123,11 @@ class LogScreenState extends State<LogScreen> {
 
   Future<void> _syncNow() async {
     setState(() => _isSyncing = true);
-    
+
     final success = await _syncService.syncLogs();
-    
+
     setState(() => _isSyncing = false);
-    
+
     if (success) {
       _showSnackBar('Sync completed successfully');
       await _loadLastSyncTime();
@@ -127,19 +139,17 @@ class LogScreenState extends State<LogScreen> {
 
   Future<void> _exportCSV() async {
     setState(() => _isExporting = true);
-    
+
     final filePath = await _exportService.exportToCSV();
-    
+
     setState(() => _isExporting = false);
-    
+
     if (filePath != null) {
       _showSnackBar('Exported to: $filePath');
     } else {
       _showSnackBar('Export failed', isError: true);
     }
   }
-
-
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -157,7 +167,7 @@ class LogScreenState extends State<LogScreen> {
   void _showLogDetail(ScanLog log) {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.height < 600;
-    
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -259,7 +269,7 @@ class LogScreenState extends State<LogScreen> {
                       const SizedBox(height: 16),
 
                       // User Info Section (if available)
-                      if ((log.userName != null && log.userName!.isNotEmpty) || 
+                      if ((log.userName != null && log.userName!.isNotEmpty) ||
                           (log.userClass != null && log.userClass!.isNotEmpty))
                         _buildLogUserInfoSection(log),
 
@@ -269,7 +279,8 @@ class LogScreenState extends State<LogScreen> {
                       _buildLogLocationTimeSection(log),
 
                       // Device Info (if available)
-                      if (log.deviceInfo != null && log.deviceInfo!.isNotEmpty) ...[
+                      if (log.deviceInfo != null &&
+                          log.deviceInfo!.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         _buildLogDeviceInfoSection(log),
                       ],
@@ -391,8 +402,10 @@ class LogScreenState extends State<LogScreen> {
               value: log.userName!,
               iconColor: AppTheme.successGreen,
             ),
-          if (log.userName != null && log.userName!.isNotEmpty && 
-              log.userClass != null && log.userClass!.isNotEmpty)
+          if (log.userName != null &&
+              log.userName!.isNotEmpty &&
+              log.userClass != null &&
+              log.userClass!.isNotEmpty)
             const SizedBox(height: 12),
           if (log.userClass != null && log.userClass!.isNotEmpty)
             _buildLogCompactDetailRow(
@@ -440,14 +453,18 @@ class LogScreenState extends State<LogScreen> {
           _buildLogCompactDetailRow(
             icon: Icons.location_city,
             label: 'Kota',
-            value: (log.city == null || log.city!.isEmpty) ? 'Tidak diketahui' : log.city!,
+            value: (log.city == null || log.city!.isEmpty)
+                ? 'Tidak diketahui'
+                : log.city!,
             iconColor: AppTheme.warningOrange,
           ),
           const SizedBox(height: 12),
           _buildLogCompactDetailRow(
             icon: Icons.location_on,
             label: 'Alamat',
-            value: (log.address == null || log.address!.isEmpty) ? 'Tidak diketahui' : log.address!,
+            value: (log.address == null || log.address!.isEmpty)
+                ? 'Tidak diketahui'
+                : log.address!,
             iconColor: AppTheme.warningOrange,
           ),
           if (log.latitude != null && log.longitude != null) ...[
@@ -455,7 +472,8 @@ class LogScreenState extends State<LogScreen> {
             _buildLogCompactDetailRow(
               icon: Icons.my_location,
               label: 'Koordinat',
-              value: '${log.latitude!.toStringAsFixed(6)}, ${log.longitude!.toStringAsFixed(6)}',
+              value:
+                  '${log.latitude!.toStringAsFixed(6)}, ${log.longitude!.toStringAsFixed(6)}',
               iconColor: AppTheme.warningOrange,
             ),
           ],
@@ -504,12 +522,12 @@ class LogScreenState extends State<LogScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: log.isSynced 
+        color: log.isSynced
             ? AppTheme.successGreen.withOpacity(0.1)
             : AppTheme.warningOrange.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: log.isSynced 
+          color: log.isSynced
               ? AppTheme.successGreen.withOpacity(0.3)
               : AppTheme.warningOrange.withOpacity(0.3),
           width: 1,
@@ -521,13 +539,17 @@ class LogScreenState extends State<LogScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: (log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange).withOpacity(0.2),
+              color: (log.isSynced
+                      ? AppTheme.successGreen
+                      : AppTheme.warningOrange)
+                  .withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               log.isSynced ? Icons.cloud_done : Icons.cloud_queue,
               size: 20,
-              color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+              color:
+                  log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
             ),
           ),
           const SizedBox(width: 12),
@@ -549,7 +571,9 @@ class LogScreenState extends State<LogScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+                    color: log.isSynced
+                        ? AppTheme.successGreen
+                        : AppTheme.warningOrange,
                   ),
                 ),
               ],
@@ -667,10 +691,13 @@ class LogScreenState extends State<LogScreen> {
                         children: [
                           Text(
                             'Log',
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              color: AppTheme.textDark,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  color: AppTheme.textDark,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                           Row(
                             children: [
@@ -680,7 +707,8 @@ class LogScreenState extends State<LogScreen> {
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
                                       )
                                     : const Icon(Icons.download_outlined),
                                 color: AppTheme.textDark,
@@ -692,7 +720,8 @@ class LogScreenState extends State<LogScreen> {
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
                                       )
                                     : const Icon(Icons.sync_rounded),
                                 color: AppTheme.primaryBlue,
@@ -703,7 +732,8 @@ class LogScreenState extends State<LogScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const SettingsScreen(),
+                                      builder: (context) =>
+                                          const SettingsScreen(),
                                     ),
                                   ).then((_) => _loadData());
                                 },
@@ -748,11 +778,12 @@ class LogScreenState extends State<LogScreen> {
                           _buildWideStatCard(
                             icon: Icons.sync,
                             label: 'Last Sync',
-                            value: _lastSyncTime != null 
-                                ? _formatLastSync(_lastSyncTime!) 
+                            value: _lastSyncTime != null
+                                ? _formatLastSync(_lastSyncTime!)
                                 : 'Never',
                             subtitle: _lastSyncTime != null
-                                ? DateFormat('MMM dd, yyyy • HH:mm').format(_lastSyncTime!)
+                                ? DateFormat('MMM dd, yyyy • HH:mm')
+                                    .format(_lastSyncTime!)
                                 : 'No sync performed yet',
                             color: AppTheme.warningOrange,
                           ),
@@ -777,7 +808,8 @@ class LogScreenState extends State<LogScreen> {
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'Search UID, nama, kelas, atau location...',
+                            hintText:
+                                'Search UID, nama, kelas, atau location...',
                             hintStyle: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 14,
@@ -1014,8 +1046,8 @@ class LogScreenState extends State<LogScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: log.isSynced 
-                        ? AppTheme.successGreen.withOpacity(0.1) 
+                    color: log.isSynced
+                        ? AppTheme.successGreen.withOpacity(0.1)
                         : AppTheme.warningOrange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -1024,8 +1056,8 @@ class LogScreenState extends State<LogScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: log.isSynced 
-                          ? AppTheme.successGreen 
+                      color: log.isSynced
+                          ? AppTheme.successGreen
                           : AppTheme.warningOrange,
                     ),
                   ),
@@ -1060,7 +1092,8 @@ class LogScreenState extends State<LogScreen> {
                       ),
                     ],
                     if (log.userClass != null) ...[
-                      Icon(Icons.school, size: 14, color: AppTheme.successGreen),
+                      Icon(Icons.school,
+                          size: 14, color: AppTheme.successGreen),
                       const SizedBox(width: 4),
                       Text(
                         log.userClass!,

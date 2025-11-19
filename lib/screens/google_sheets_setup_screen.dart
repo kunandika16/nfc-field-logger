@@ -9,13 +9,15 @@ class GoogleSheetsSetupScreen extends StatefulWidget {
   const GoogleSheetsSetupScreen({Key? key}) : super(key: key);
 
   @override
-  State<GoogleSheetsSetupScreen> createState() => _GoogleSheetsSetupScreenState();
+  State<GoogleSheetsSetupScreen> createState() =>
+      _GoogleSheetsSetupScreenState();
 }
 
 class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
   final GoogleSheetsService _sheetsService = GoogleSheetsService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
-  final TextEditingController _spreadsheetNameController = TextEditingController();
+  final TextEditingController _spreadsheetNameController =
+      TextEditingController();
 
   bool _isLoading = true;
   bool _isSignedIn = false;
@@ -33,13 +35,13 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
 
   Future<void> _initialize() async {
     setState(() => _isLoading = true);
-    
+
     await _sheetsService.initialize();
-    
+
     final user = _sheetsService.currentUser;
     final savedId = await _sheetsService.getSavedSpreadsheetId();
     final savedName = await _sheetsService.getSavedSpreadsheetName();
-    
+
     setState(() {
       _isSignedIn = user != null;
       _userEmail = user?.email;
@@ -51,9 +53,9 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
 
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
-    
+
     final account = await _sheetsService.signIn();
-    
+
     setState(() {
       _isSignedIn = account != null;
       _userEmail = account?.email;
@@ -90,14 +92,14 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
     if (confirm == true) {
       await _sheetsService.signOut();
       await _sheetsService.clearSavedSpreadsheet();
-      
+
       setState(() {
         _isSignedIn = false;
         _userEmail = null;
         _savedSpreadsheetId = null;
         _savedSpreadsheetName = null;
       });
-      
+
       _showSnackBar('Signed out successfully');
     }
   }
@@ -137,7 +139,7 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
     setState(() => _isSyncing = true);
 
     final logs = await _dbHelper.getUnsyncedLogs();
-    
+
     if (logs.isEmpty) {
       setState(() => _isSyncing = false);
       _showSnackBar('No logs to sync');
@@ -163,7 +165,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
 
   Future<void> _openSpreadsheet() async {
     if (_savedSpreadsheetId == null) {
-      _showSnackBar('Spreadsheet belum tersedia. Buat terlebih dahulu.', isError: true);
+      _showSnackBar('Spreadsheet belum tersedia. Buat terlebih dahulu.',
+          isError: true);
       return;
     }
 
@@ -184,7 +187,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
 
       // 4) Fallback: salin ke clipboard
       await Clipboard.setData(ClipboardData(text: url));
-      _showSnackBar('Gagal membuka. Link disalin ke clipboard:\n$url', isError: true);
+      _showSnackBar('Gagal membuka. Link disalin ke clipboard:\n$url',
+          isError: true);
     } catch (e) {
       _showSnackBar('Error membuka spreadsheet: $e', isError: true);
     }
@@ -256,10 +260,13 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Google Sheets Setup',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppTheme.textDark,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: AppTheme.textDark,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
@@ -271,7 +278,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                       _buildInfoCard(
                         icon: Icons.info_outline,
                         title: 'Easy Setup',
-                        description: 'Sign in with Google to automatically create and manage your spreadsheet. No manual URL copying required!',
+                        description:
+                            'Sign in with Google to automatically create and manage your spreadsheet. No manual URL copying required!',
                         color: AppTheme.primaryBlue,
                       ),
                       const SizedBox(height: AppTheme.spacingMedium),
@@ -282,7 +290,7 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                           icon: Image.asset(
                             'assets/google_logo.png',
                             height: 24,
-                            errorBuilder: (context, error, stackTrace) => 
+                            errorBuilder: (context, error, stackTrace) =>
                                 const Icon(Icons.login, color: Colors.white),
                           ),
                           label: const Text('Sign in with Google'),
@@ -316,7 +324,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                             CircleAvatar(
                               backgroundColor: AppTheme.primaryBlue,
                               child: Text(
-                                _userEmail?.substring(0, 1).toUpperCase() ?? 'U',
+                                _userEmail?.substring(0, 1).toUpperCase() ??
+                                    'U',
                                 style: const TextStyle(color: Colors.white),
                               ),
                             ),
@@ -358,7 +367,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                         _buildInfoCard(
                           icon: Icons.add_circle_outline,
                           title: 'Create Spreadsheet',
-                          description: 'Create a new Google Spreadsheet to store your NFC scan data.',
+                          description:
+                              'Create a new Google Spreadsheet to store your NFC scan data.',
                           color: AppTheme.successGreen,
                         ),
                         const SizedBox(height: AppTheme.spacingMedium),
@@ -401,7 +411,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.successGreen.withOpacity(0.1),
+                                      color: AppTheme.successGreen
+                                          .withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
@@ -413,7 +424,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           'Active Spreadsheet',
@@ -424,7 +436,8 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          _savedSpreadsheetName ?? 'Spreadsheet',
+                                          _savedSpreadsheetName ??
+                                              'Spreadsheet',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -442,13 +455,16 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                   Expanded(
                                     child: OutlinedButton.icon(
                                       onPressed: _openSpreadsheet,
-                                      icon: const Icon(Icons.open_in_new, size: 18),
+                                      icon: const Icon(Icons.open_in_new,
+                                          size: 18),
                                       label: const Text('Open'),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppTheme.primaryBlue,
-                                        side: const BorderSide(color: AppTheme.primaryBlue),
+                                        side: const BorderSide(
+                                            color: AppTheme.primaryBlue),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
@@ -456,7 +472,9 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: ElevatedButton.icon(
-                                      onPressed: _isSyncing ? null : _syncToSpreadsheet,
+                                      onPressed: _isSyncing
+                                          ? null
+                                          : _syncToSpreadsheet,
                                       icon: _isSyncing
                                           ? const SizedBox(
                                               width: 18,
@@ -467,12 +485,15 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                               ),
                                             )
                                           : const Icon(Icons.sync, size: 18),
-                                      label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
+                                      label: Text(_isSyncing
+                                          ? 'Syncing...'
+                                          : 'Sync Now'),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppTheme.successGreen,
                                         foregroundColor: Colors.white,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
@@ -491,19 +512,22 @@ class _GoogleSheetsSetupScreenState extends State<GoogleSheetsSetupScreen> {
                                       ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(context, false),
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
                                           child: const Text('Cancel'),
                                         ),
                                         TextButton(
-                                          onPressed: () => Navigator.pop(context, true),
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
                                           child: const Text('Continue'),
                                         ),
                                       ],
                                     ),
                                   );
-                                  
+
                                   if (confirm == true) {
-                                    await _sheetsService.clearSavedSpreadsheet();
+                                    await _sheetsService
+                                        .clearSavedSpreadsheet();
                                     setState(() {
                                       _savedSpreadsheetId = null;
                                       _savedSpreadsheetName = null;

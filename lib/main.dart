@@ -123,7 +123,8 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               Icon(
                 icon,
-                color: isSelected ? AppTheme.primaryBlue : AppTheme.textSecondary,
+                color:
+                    isSelected ? AppTheme.primaryBlue : AppTheme.textSecondary,
                 size: 24,
               ),
               const SizedBox(height: 4),
@@ -132,7 +133,9 @@ class _MainScreenState extends State<MainScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? AppTheme.primaryBlue : AppTheme.textSecondary,
+                  color: isSelected
+                      ? AppTheme.primaryBlue
+                      : AppTheme.textSecondary,
                 ),
               ),
               const SizedBox(height: 4),

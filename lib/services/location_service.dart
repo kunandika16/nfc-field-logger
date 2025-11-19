@@ -1,7 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../utils/logger.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -46,7 +45,7 @@ class LocationService {
       }
 
       AppLogger.info('Attempting to get high accuracy position...');
-      
+
       // Try high accuracy first with shorter timeout
       try {
         Position position = await Geolocator.getCurrentPosition(
@@ -59,7 +58,7 @@ class LocationService {
         return position;
       } catch (e) {
         AppLogger.warning('High accuracy timeout, trying low accuracy...');
-        
+
         // Fallback to low accuracy (network-based)
         try {
           Position position = await Geolocator.getCurrentPosition(
@@ -71,8 +70,9 @@ class LocationService {
           AppLogger.info('Got low accuracy position');
           return position;
         } catch (e2) {
-          AppLogger.warning('Low accuracy also failed, trying last known position...');
-          
+          AppLogger.warning(
+              'Low accuracy also failed, trying last known position...');
+
           // Last resort: get last known position
           final lastPosition = await Geolocator.getLastKnownPosition();
           if (lastPosition != null) {
@@ -100,8 +100,9 @@ class LocationService {
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        AppLogger.info('Geocoding result - Locality: ${place.locality}, SubLocality: ${place.subLocality}, SubAdminArea: ${place.subAdministrativeArea}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
-        
+        AppLogger.info(
+            'Geocoding result - Locality: ${place.locality}, SubLocality: ${place.subLocality}, SubAdminArea: ${place.subAdministrativeArea}, AdminArea: ${place.administrativeArea}, Country: ${place.country}');
+
         String? fullAddress = [
           place.street,
           place.locality,
@@ -111,9 +112,11 @@ class LocationService {
 
         // Determine city name: prefer subAdministrativeArea else fallback to locality directly
         String? cityName;
-        if (place.subAdministrativeArea != null && place.subAdministrativeArea!.trim().isNotEmpty) {
+        if (place.subAdministrativeArea != null &&
+            place.subAdministrativeArea!.trim().isNotEmpty) {
           cityName = place.subAdministrativeArea!.trim();
-        } else if (place.locality != null && place.locality!.trim().isNotEmpty) {
+        } else if (place.locality != null &&
+            place.locality!.trim().isNotEmpty) {
           cityName = place.locality!.trim();
         }
 
@@ -150,7 +153,8 @@ class LocationService {
         return null;
       }
 
-      AppLogger.info('Position obtained: ${position.latitude}, ${position.longitude}');
+      AppLogger.info(
+          'Position obtained: ${position.latitude}, ${position.longitude}');
       Map<String, String?> addressData = await getAddressFromCoordinates(
         position.latitude,
         position.longitude,
@@ -163,8 +167,9 @@ class LocationService {
         city: addressData['city'],
         country: addressData['country'],
       );
-      
-      AppLogger.info('Location data complete - City: ${locationData.city}, Address: ${locationData.address}');
+
+      AppLogger.info(
+          'Location data complete - City: ${locationData.city}, Address: ${locationData.address}');
       return locationData;
     } catch (e) {
       AppLogger.error('Error getting complete location data', e);

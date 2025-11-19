@@ -64,13 +64,10 @@ class DatabaseHelper {
   // Insert a new scan log
   Future<int> insertScanLog(ScanLog log) async {
     try {
-      print('Inserting scan log: ${log.toMap()}');
       final db = await database;
       final id = await db.insert('scan_logs', log.toMap());
-      print('Inserted scan log with ID: $id');
       return id;
     } catch (e) {
-      print('Error inserting scan log: $e');
       rethrow;
     }
   }
@@ -83,10 +80,8 @@ class DatabaseHelper {
         'scan_logs',
         orderBy: 'timestamp DESC',
       );
-      print('Retrieved ${maps.length} scan logs from database');
       return List.generate(maps.length, (i) => ScanLog.fromMap(maps[i]));
     } catch (e) {
-      print('Error getting scan logs: $e');
       return [];
     }
   }
@@ -115,8 +110,7 @@ class DatabaseHelper {
   }
 
   // Get logs by date range
-  Future<List<ScanLog>> getLogsByDateRange(
-      DateTime start, DateTime end) async {
+  Future<List<ScanLog>> getLogsByDateRange(DateTime start, DateTime end) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'scan_logs',
@@ -145,10 +139,8 @@ class DatabaseHelper {
       final db = await database;
       final result = await db.rawQuery('SELECT COUNT(*) FROM scan_logs');
       final count = Sqflite.firstIntValue(result) ?? 0;
-      print('Total scan count: $count');
       return count;
     } catch (e) {
-      print('Error getting total scan count: $e');
       return 0;
     }
   }
@@ -156,7 +148,8 @@ class DatabaseHelper {
   // Get unsynced count
   Future<int> getUnsyncedCount() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) FROM scan_logs WHERE isSynced = 0');
+    final result =
+        await db.rawQuery('SELECT COUNT(*) FROM scan_logs WHERE isSynced = 0');
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
@@ -198,7 +191,6 @@ class DatabaseHelper {
 
   // Insert dummy data for testing
   Future<void> insertDummyData() async {
-    print('Inserting dummy data...');
     final dummyLog = ScanLog(
       uid: 'AA:BB:CC:DD',
       timestamp: DateTime.now(),
@@ -209,6 +201,5 @@ class DatabaseHelper {
       isSynced: false,
     );
     await insertScanLog(dummyLog);
-    print('Dummy data inserted');
   }
 }

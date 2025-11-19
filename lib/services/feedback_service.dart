@@ -21,7 +21,7 @@ class FeedbackService {
     if (_canVibrate) {
       Vibrate.vibrate(); // Short vibration
     }
-    
+
     // System sound untuk sukses
     await SystemSound.play(SystemSoundType.click);
   }
@@ -42,7 +42,7 @@ class FeedbackService {
         Vibrate.vibrate();
       }
     }
-    
+
     // System sound untuk error
     // Note: iOS dan beberapa Android tidak punya sound khusus untuk alert
     // Kita gunakan system sound yang tersedia

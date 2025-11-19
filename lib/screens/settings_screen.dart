@@ -5,7 +5,6 @@ import '../services/sync_service.dart';
 import '../services/database_helper.dart';
 import '../utils/app_theme.dart';
 import '../services/user_profile_service.dart';
-// import 'google_sheets_setup_screen.dart'; // Hidden - requires OAuth verification
 import '../services/google_sheets_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -18,16 +17,18 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final SyncService _syncService = SyncService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  final GoogleSheetsService _googleSheetsService = GoogleSheetsService();
   final TextEditingController _urlController = TextEditingController();
-  final TextEditingController _spreadsheetUrlController = TextEditingController();
+  final TextEditingController _spreadsheetUrlController =
+      TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _classController = TextEditingController();
   final UserProfileService _userProfileService = UserProfileService();
-  
+
   // Default Google Apps Script URL
   static const String defaultAppScriptUrl =
       'https://script.google.com/macros/s/AKfycbw0X-aUMO6-09o0fJ1yWl1d-sTMI2EUQ5mpO8SKR1oCIZhSkvwnGqrKVtdbAqSB5Q2KbA/exec';
-  
+
   bool _isLoading = true;
   bool _isTesting = false;
   bool _isEditingUrl = false;
@@ -45,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
-    
+
     final url = await _syncService.getWebAppUrl();
     final spreadsheetUrl = await _syncService.getSpreadsheetUrl();
     final autoSync = await _syncService.isAutoSyncEnabled();
@@ -80,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveUrl() async {
     final url = _urlController.text.trim();
-    
+
     if (url.isEmpty) {
       _showSnackBar('URL cannot be empty', isError: true);
       return;
@@ -99,13 +100,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   bool _isValidGoogleSheetsUrl(String url) {
-    return url.startsWith('https://script.google.com/') && 
-           url.contains('/exec');
+    return url.startsWith('https://script.google.com/') &&
+        url.contains('/exec');
   }
 
   Future<void> _testConnection() async {
     final url = _urlController.text.trim();
-    
+
     if (url.isEmpty) {
       _showSnackBar('Please enter a URL first', isError: true);
       return;
@@ -137,13 +138,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-
   Future<void> _toggleAutoSync(bool value) async {
     await _syncService.setAutoSync(value);
     setState(() => _autoSyncEnabled = value);
     _showSnackBar(
       value ? 'Auto-sync enabled' : 'Auto-sync disabled',
     );
+  }
+
+
+
+  Future<void> _updateSpreadsheetHeaders() async {
+    setState(() => _isTesting = true);
+
+    try {
+      final spreadsheetId = await _googleSheetsService.getSavedSpreadsheetId();
+      if (spreadsheetId == null) {
+        _showSnackBar('No spreadsheet found. Please set up Google Sheets first.', isError: true);
+        return;
+      }
+
+      final success = await _googleSheetsService.updateSpreadsheetHeaders(spreadsheetId);
+      
+      if (success) {
+        _showSnackBar('Spreadsheet headers updated successfully! ✓');
+      } else {
+        _showSnackBar('Failed to update headers. Please try again.', isError: true);
+      }
+    } catch (e) {
+      _showSnackBar('Error updating headers: $e', isError: true);
+    } finally {
+      setState(() => _isTesting = false);
+    }
   }
 
   Future<void> _clearAllData() async {
@@ -213,12 +239,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Settings',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: AppTheme.textDark,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: AppTheme.textDark,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
+                    ),
+
+
+
+                    const SizedBox(height: AppTheme.spacingMedium),
+
+                    // NFC Tag Format Information
+                    _buildSection(
+                      title: 'NFC Tag Format',
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.primaryBlue.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: AppTheme.primaryBlue,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'NFC Tag Data Format',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'To capture user name and class data, your NFC tags must be written in one of these formats:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppTheme.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildFormatExample('JSON Format', '{"nama":"John Doe","kelas":"12A"}'),
+                            const SizedBox(height: 12),
+                            _buildFormatExample('Pipe Format', 'nama:John Doe|kelas:12A'),
+                            const SizedBox(height: 12),
+                            _buildFormatExample('Line Format', 'nama:John Doe\\nkelas:12A'),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.warningOrange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber,
+                                    color: AppTheme.warningOrange,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'If no user data is found on the NFC tag, only UID and location will be recorded.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: AppTheme.spacingLarge),
@@ -663,6 +775,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             activeColor: AppTheme.primaryBlue,
                             contentPadding: EdgeInsets.zero,
                           ),
+                          const Divider(),
+                          // Update Headers Button
+                          ListTile(
+                            leading: const Icon(
+                              Icons.table_chart,
+                              color: AppTheme.primaryBlue,
+                            ),
+                            title: const Text(
+                              'Update Spreadsheet Headers',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textDark,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Add missing columns (user_name, user_class, device_info)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            trailing: ElevatedButton(
+                              onPressed: _isTesting ? null : _updateSpreadsheetHeaders,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryBlue,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                              child: _isTesting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text('Update'),
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                          ),
                           if (_lastSyncTime != null) ...[
                             const Divider(),
                             ListTile(
@@ -701,7 +859,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           _buildStatRow('Total Logs', _totalLogs.toString()),
                           const Divider(),
-                          _buildStatRow('Unsynced Logs', _unsyncedLogs.toString()),
+                          _buildStatRow(
+                              'Unsynced Logs', _unsyncedLogs.toString()),
                           const Divider(),
                           _buildStatRow(
                             'Synced Logs',
@@ -742,87 +901,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
 
                     const SizedBox(height: AppTheme.spacingLarge),
-
-                    // User Profile
-                    _buildSection(
-                      title: 'User Profile',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              labelText: 'Name',
-                              hintText: 'Enter your name',
-                              filled: true,
-                              fillColor: AppTheme.lightBackground,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.all(16),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _classController,
-                            decoration: InputDecoration(
-                              labelText: 'Class',
-                              hintText: 'Enter your class (e.g. XII IPA 1)',
-                              filled: true,
-                              fillColor: AppTheme.lightBackground,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.all(16),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                await _userProfileService.setUserName(_nameController.text.trim());
-                                await _userProfileService.setUserClass(_classController.text.trim());
-                                _showSnackBar('Profile saved');
-                              },
-                              icon: const Icon(Icons.save_outlined, size: 18),
-                              label: const Text('Save Profile'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryBlue,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryBlue.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.info_outline, size: 16, color: AppTheme.primaryBlue),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Name and class akan ditampilkan setiap selesai scan kartu NFC.',
-                                    style: const TextStyle(fontSize: 11, color: AppTheme.primaryBlue),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
                     // App Info
                     Center(
@@ -909,6 +987,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFormatExample(String title, String example) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textDark,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.textDark.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: AppTheme.textSecondary.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            example,
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: AppTheme.textDark,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

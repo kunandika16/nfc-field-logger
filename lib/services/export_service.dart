@@ -4,7 +4,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/scan_log.dart';
 import 'database_helper.dart';
-import '../utils/logger.dart';
 
 class ExportService {
   static final ExportService _instance = ExportService._internal();
@@ -57,7 +56,18 @@ class ExportService {
       // Prepare CSV data
       List<List<String>> csvData = [
         // Header row (extended)
-        ['UID', 'Name', 'Class', 'Device', 'Timestamp', 'Latitude', 'Longitude', 'Address', 'City', 'Synced'],
+        [
+          'UID',
+          'Name',
+          'Class',
+          'Device',
+          'Timestamp',
+          'Latitude',
+          'Longitude',
+          'Address',
+          'City',
+          'Synced'
+        ],
         // Data rows
         ...logs.map((log) => log.toCsvRow()),
       ];
@@ -67,12 +77,13 @@ class ExportService {
 
       // Create filename with timestamp (YYYY-MM-DD_HH-mm-ss)
       final now = DateTime.now();
-      final timestamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
+      final timestamp =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
       final filename = 'nfc_logs_$timestamp.csv';
 
       // Let user pick directory
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-      
+
       if (selectedDirectory == null) {
         // User cancelled
         return null;
@@ -86,7 +97,6 @@ class ExportService {
 
       return filePath;
     } catch (e) {
-      AppLogger.error('Error exporting CSV', e);
       return null;
     }
   }
@@ -107,7 +117,18 @@ class ExportService {
       // Prepare CSV data
       List<List<String>> csvData = [
         // Header row (extended)
-        ['UID', 'Name', 'Class', 'Device', 'Timestamp', 'Latitude', 'Longitude', 'Address', 'City', 'Synced'],
+        [
+          'UID',
+          'Name',
+          'Class',
+          'Device',
+          'Timestamp',
+          'Latitude',
+          'Longitude',
+          'Address',
+          'City',
+          'Synced'
+        ],
         // Data rows
         ...logs.map((log) => log.toCsvRow()),
       ];
@@ -117,12 +138,13 @@ class ExportService {
 
       // Create filename (YYYY-MM-DD_HH-mm-ss)
       final now = DateTime.now();
-      final timestamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
+      final timestamp =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
       final filename = 'nfc_logs_$timestamp.csv';
 
       // Let user pick directory
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-      
+
       if (selectedDirectory == null) {
         // User cancelled
         return null;
@@ -136,7 +158,6 @@ class ExportService {
 
       return filePath;
     } catch (e) {
-      AppLogger.error('Error exporting specific logs', e);
       return null;
     }
   }
@@ -145,7 +166,7 @@ class ExportService {
   Future<Map<String, int>> getExportStats() async {
     final totalLogs = await _dbHelper.getTotalScanCount();
     final unsyncedLogs = await _dbHelper.getUnsyncedLogs();
-    
+
     return {
       'total': totalLogs,
       'unsynced': unsyncedLogs.length,

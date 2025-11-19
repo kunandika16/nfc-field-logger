@@ -20,7 +20,8 @@ class ScanScreen extends StatefulWidget {
   State<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateMixin {
+class _ScanScreenState extends State<ScanScreen>
+    with SingleTickerProviderStateMixin {
   final NfcService _nfcService = NfcService();
   final LocationService _locationService = LocationService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -34,7 +35,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   int _totalScans = 0;
   int _unsyncedCount = 0;
   int _syncedCount = 0;
-  
+
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
@@ -98,17 +99,13 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _startScan() async {
-    print('Starting NFC scan...');
-    
     if (!_nfcAvailable) {
-      print('NFC not available');
       await _feedbackService.playErrorFeedback();
       _showSnackBar('NFC is not available on this device', isError: true);
       return;
     }
 
     if (_nfcService.isScanning) {
-      print('NFC scan already in progress');
       await _feedbackService.playInfoFeedback();
       _showSnackBar('Scan already in progress', isError: true);
       return;
@@ -122,54 +119,32 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     _showSnackBar('Hold your device near an NFC card...');
 
     try {
-      print('Calling NFC service scanNfcTag...');
       // Scan NFC tag
       final nfcData = await _nfcService.scanNfcTag();
-      print('NFC scan result: $nfcData');
 
       if (nfcData == null || nfcData.uid.isEmpty) {
-        print('No UID found');
         _showSnackBar('No UID found on NFC tag', isError: true);
         _stopScanning();
         return;
       }
 
-      print('Getting location data...');
       // Get location data
       final locationData = await _locationService.getCompleteLocationData();
-      if (locationData == null) {
-        print('Location data unavailable, will save Unknown city/address');
-      } else {
-        print('Location data received: ${locationData.toString()}');
-      }
 
       // Get device info
       final deviceInfo = await DeviceInfoService().getDeviceDescription();
-      
-      // Debug: Print NFC data received
-      print('=== DEBUG: NFC Data Received ===');
-      print('UID: ${nfcData.uid}');
-      print('Username from NFC: ${nfcData.userName}');
-      print('UserClass from NFC: ${nfcData.userClass}');
-      print('Raw text data: ${nfcData.rawTextData}');
-      print('================================');
-      
+
       // Prioritize data from NFC tag, fallback to user profile
       String? finalUserName = nfcData.userName;
       String? finalUserClass = nfcData.userClass;
-      
+
       if (finalUserName == null || finalUserClass == null) {
-        print('Getting user profile data as fallback...');
         final profileService = UserProfileService();
         final profileName = await profileService.getUserName();
         final profileClass = await profileService.getUserClass();
-        print('Profile name: $profileName');
-        print('Profile class: $profileClass');
         finalUserName ??= profileName;
         finalUserClass ??= profileClass;
       }
-
-      print('Final user data - Name: $finalUserName, Class: $finalUserClass');
 
       // Create scan log including user/device metadata
       final scanLog = ScanLog(
@@ -185,10 +160,8 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
         isSynced: false,
       );
 
-      print('Saving to database...');
       // Save to database
       await _dbHelper.insertScanLog(scanLog);
-      print('Saved successfully');
 
       // Play success feedback (sound + vibration)
       await _feedbackService.playSuccessFeedback();
@@ -200,7 +173,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
 
       // Reload stats
       await _loadStats();
-      print('Stats reloaded after scan');
+      AppLogger.debug('Stats reloaded after scan');
 
       // Show success dialog
       if (mounted) {
@@ -225,11 +198,11 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
         _loadStats();
       });
     } catch (e) {
-      print('NFC scan error: $e');
-      
+      AppLogger.error('NFC scan error', e);
+
       // Play error feedback (sound + vibration)
       await _feedbackService.playErrorFeedback();
-      
+
       // Show error dialog for timeout
       if (mounted && e.toString().contains('timeout')) {
         await showDialog(
@@ -237,7 +210,8 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
           barrierDismissible: false,
           builder: (context) => NfcErrorDialog(
             title: 'Scan Failed',
-            message: 'No NFC tag detected within 5 seconds. Please make sure the NFC tag is close to your device and try again.',
+            message:
+                'No NFC tag detected within 5 seconds. Please make sure the NFC tag is close to your device and try again.',
             onClose: () {},
             onRetry: _startScan,
           ),
@@ -271,7 +245,6 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     );
   }
 
-
   @override
   void dispose() {
     _animationController.dispose();
@@ -293,189 +266,208 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                 child: Padding(
                   padding: const EdgeInsets.all(AppTheme.spacingLarge),
                   child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with title and status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Scan',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AppTheme.textDark,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (_isOnline ? AppTheme.successGreen : AppTheme.errorRed).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _isOnline ? 'Online' : 'Offline',
-                              style: TextStyle(
-                                color: _isOnline ? AppTheme.successGreen : AppTheme.errorRed,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SettingsScreen(),
-                            ),
-                          ).then((_) => _loadStats());
-                        },
-                        icon: const Icon(Icons.settings_outlined),
-                        color: AppTheme.textDark,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppTheme.spacingLarge),
-
-              // Main scan card
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingLarge * 2,
-                        vertical: AppTheme.spacingLarge,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // Header with title and status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // NFC Icon with animation and background
-                          AnimatedBuilder(
-                            animation: _scaleAnimation,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: _isScanning ? _scaleAnimation.value : 1.0,
-                                child: Container(
-                                  width: 140,
-                                  height: 140,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryBlue.withOpacity(0.08),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.contactless,
-                                      size: 70,
-                                      color: AppTheme.primaryBlue,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-
-                          const SizedBox(height: AppTheme.spacingLarge * 1.5),
-
-                          // Instruction text
                           Text(
-                            _isScanning 
-                                ? 'Hold your device near an NFC card' 
-                                : 'Tap the button below to scan\nan NFC card',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.textDark,
-                              height: 1.5,
-                            ),
-                            textAlign: TextAlign.center,
+                            'Scan',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  color: AppTheme.textDark,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (_isOnline
+                                          ? AppTheme.successGreen
+                                          : AppTheme.errorRed)
+                                      .withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: _isOnline
+                                            ? AppTheme.successGreen
+                                            : AppTheme.errorRed,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _isOnline ? 'Online' : 'Offline',
+                                      style: TextStyle(
+                                        color: _isOnline
+                                            ? AppTheme.successGreen
+                                            : AppTheme.errorRed,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SettingsScreen(),
+                                    ),
+                                  ).then((_) => _loadStats());
+                                },
+                                icon: const Icon(Icons.settings_outlined),
+                                color: AppTheme.textDark,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ),
-              ),
 
-              const SizedBox(height: AppTheme.spacingLarge),
+                      const SizedBox(height: AppTheme.spacingLarge),
 
-              // Scan button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isScanning ? null : _startScan,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    disabledBackgroundColor: AppTheme.primaryBlue.withOpacity(0.5),
-                  ),
-                  child: Text(
-                    _isScanning ? 'Scanning...' : 'Scan NFC',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+                      // Main scan card
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacingLarge * 2,
+                                vertical: AppTheme.spacingLarge,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // NFC Icon with animation and background
+                                  AnimatedBuilder(
+                                    animation: _scaleAnimation,
+                                    builder: (context, child) {
+                                      return Transform.scale(
+                                        scale: _isScanning
+                                            ? _scaleAnimation.value
+                                            : 1.0,
+                                        child: Container(
+                                          width: 140,
+                                          height: 140,
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryBlue
+                                                .withOpacity(0.08),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.contactless,
+                                              size: 70,
+                                              color: AppTheme.primaryBlue,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
 
-              const SizedBox(height: AppTheme.spacingMedium),
+                                  const SizedBox(
+                                      height: AppTheme.spacingLarge * 1.5),
 
-              // Stats row
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(_totalScans.toString(), 'Total scans'),
-                  ),
-                  const SizedBox(width: AppTheme.spacingMedium),
-                  Expanded(
-                    child: _buildStatItem(_unsyncedCount.toString(), 'Unsynced'),
-                  ),
-                  const SizedBox(width: AppTheme.spacingMedium),
-                  Expanded(
-                    child: _buildStatItem(_syncedCount.toString(), 'Synced'),
-                  ),
-                ],
-              ),
-            ],
+                                  // Instruction text
+                                  Text(
+                                    _isScanning
+                                        ? 'Hold your device near an NFC card'
+                                        : 'Tap the button below to scan\nan NFC card',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: AppTheme.textDark,
+                                      height: 1.5,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: AppTheme.spacingLarge),
+
+                      // Scan button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _isScanning ? null : _startScan,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            disabledBackgroundColor:
+                                AppTheme.primaryBlue.withOpacity(0.5),
+                          ),
+                          child: Text(
+                            _isScanning ? 'Scanning...' : 'Scan NFC',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: AppTheme.spacingMedium),
+
+                      // Stats row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatItem(
+                                _totalScans.toString(), 'Total scans'),
+                          ),
+                          const SizedBox(width: AppTheme.spacingMedium),
+                          Expanded(
+                            child: _buildStatItem(
+                                _unsyncedCount.toString(), 'Unsynced'),
+                          ),
+                          const SizedBox(width: AppTheme.spacingMedium),
+                          Expanded(
+                            child: _buildStatItem(
+                                _syncedCount.toString(), 'Synced'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
