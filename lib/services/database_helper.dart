@@ -20,8 +20,9 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'scan_logs.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -35,9 +36,29 @@ class DatabaseHelper {
         longitude REAL,
         address TEXT,
         city TEXT,
+        user_name TEXT,
+        user_class TEXT,
+        device_info TEXT,
         isSynced INTEGER DEFAULT 0
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add new columns if they do not exist (safe migration)
+      final existingColumns = await db.rawQuery('PRAGMA table_info(scan_logs)');
+      final names = existingColumns.map((e) => e['name']).toSet();
+      if (!names.contains('user_name')) {
+        await db.execute('ALTER TABLE scan_logs ADD COLUMN user_name TEXT');
+      }
+      if (!names.contains('user_class')) {
+        await db.execute('ALTER TABLE scan_logs ADD COLUMN user_class TEXT');
+      }
+      if (!names.contains('device_info')) {
+        await db.execute('ALTER TABLE scan_logs ADD COLUMN device_info TEXT');
+      }
+    }
   }
 
   // Insert a new scan log

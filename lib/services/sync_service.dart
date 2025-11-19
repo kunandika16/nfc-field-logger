@@ -21,6 +21,9 @@ class SyncService {
   SyncStatus get status => _status;
   DateTime? get lastSyncTime => _lastSyncTime;
 
+  // Hardcoded Apps Script Web App URL
+  static const String _hardcodedWebAppUrl = 'https://script.google.com/macros/s/AKfycbxWJauXUbi_tm1HrgS2sVgALdSQr9QILgCSzMEpL0KTllNy0r-8Aj18dMZAeVXu_IIILw/exec';
+
   // Keys for SharedPreferences
   static const String _webAppUrlKey = 'google_sheets_web_app_url';
   static const String _spreadsheetUrlKey = 'google_spreadsheet_url';
@@ -39,10 +42,9 @@ class SyncService {
     await prefs.setString(_webAppUrlKey, url);
   }
 
-  // Get Google Sheets Web App URL
+  // Get Google Sheets Web App URL (now hardcoded)
   Future<String?> getWebAppUrl() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_webAppUrlKey);
+    return _hardcodedWebAppUrl;
   }
 
   // Set Google Spreadsheet URL for viewing

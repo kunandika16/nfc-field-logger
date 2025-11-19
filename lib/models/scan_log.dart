@@ -8,6 +8,9 @@ class ScanLog {
   final double? longitude;
   final String? address;
   final String? city;
+  final String? userName;
+  final String? userClass;
+  final String? deviceInfo;
   final bool isSynced;
 
   ScanLog({
@@ -18,6 +21,9 @@ class ScanLog {
     this.longitude,
     this.address,
     this.city,
+    this.userName,
+    this.userClass,
+    this.deviceInfo,
     this.isSynced = false,
   });
 
@@ -31,6 +37,9 @@ class ScanLog {
       'longitude': longitude,
       'address': address,
       'city': city,
+      'user_name': userName,
+      'user_class': userClass,
+      'device_info': deviceInfo,
       'isSynced': isSynced ? 1 : 0,
     };
   }
@@ -45,6 +54,9 @@ class ScanLog {
       longitude: map['longitude'] as double?,
       address: map['address'] as String?,
       city: map['city'] as String?,
+      userName: map['user_name'] as String?,
+      userClass: map['user_class'] as String?,
+      deviceInfo: map['device_info'] as String?,
       isSynced: map['isSynced'] == 1,
     );
   }
@@ -54,6 +66,9 @@ class ScanLog {
     final formattedTimestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(timestamp.toLocal());
     return [
       uid,
+      userName ?? '',
+      userClass ?? '',
+      deviceInfo ?? '',
       formattedTimestamp,
       latitude?.toString() ?? '',
       longitude?.toString() ?? '',
@@ -72,6 +87,9 @@ class ScanLog {
     double? longitude,
     String? address,
     String? city,
+    String? userName,
+    String? userClass,
+    String? deviceInfo,
     bool? isSynced,
   }) {
     return ScanLog(
@@ -82,6 +100,9 @@ class ScanLog {
       longitude: longitude ?? this.longitude,
       address: address ?? this.address,
       city: city ?? this.city,
+      userName: userName ?? this.userName,
+      userClass: userClass ?? this.userClass,
+      deviceInfo: deviceInfo ?? this.deviceInfo,
       isSynced: isSynced ?? this.isSynced,
     );
   }

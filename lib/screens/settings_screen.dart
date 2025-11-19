@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/sync_service.dart';
 import '../services/database_helper.dart';
 import '../utils/app_theme.dart';
+import '../services/user_profile_service.dart';
 // import 'google_sheets_setup_screen.dart'; // Hidden - requires OAuth verification
 import '../services/google_sheets_service.dart';
 
@@ -19,6 +20,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _spreadsheetUrlController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _classController = TextEditingController();
+  final UserProfileService _userProfileService = UserProfileService();
   
   // Default Google Apps Script URL
   static const String defaultAppScriptUrl =
@@ -48,6 +52,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final lastSync = _syncService.lastSyncTime;
     final total = await _dbHelper.getTotalScanCount();
     final unsynced = await _dbHelper.getUnsyncedCount();
+
+    // Load user profile
+    final userName = await _userProfileService.getUserName();
+    final userClass = await _userProfileService.getUserClass();
+    _nameController.text = userName ?? '';
+    _classController.text = userClass ?? '';
 
     // If no URL is set, use default URL
     if (url == null || url.isEmpty) {
@@ -213,92 +223,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: AppTheme.spacingLarge),
 
-                    // Google Sheets Configuration
+                    // Google Sheets Configuration (Hidden - URL is hardcoded)
+                    /*
                     _buildSection(
                       title: 'Google Sheets Integration',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Easy Setup with Google Sign-In (hidden - requires OAuth verification)
-                          /*
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppTheme.successGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.successGreen.withOpacity(0.3)),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.auto_awesome, color: AppTheme.successGreen, size: 24),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Easy Setup (Recommended)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.successGreen,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Sign in & create spreadsheet automatically',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.successGreen.withOpacity(0.8),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => const GoogleSheetsSetupScreen(),
-                                        ),
-                                      ).then((_) => _loadSettings());
-                                    },
-                                    icon: const Icon(Icons.login, size: 18),
-                                    label: const Text('Easy Setup with Google'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.successGreen,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          const Divider(),
-                          const SizedBox(height: 12),
-                          Text(
-                            'OR Manual Setup (Advanced)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          */
-                          // Apps Script Setup
+                          // Apps Script Setup - HIDDEN (URL hardcoded in SyncService)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -485,10 +417,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
+                    */
 
                     const SizedBox(height: AppTheme.spacingMedium),
 
-                    // Spreadsheet Viewer
+                    /* Spreadsheet Viewer - Hidden (hardcoded setup)
                     _buildSection(
                       title: 'View Spreadsheet',
                       child: Column(
@@ -700,6 +633,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
+                    */
 
                     const SizedBox(height: AppTheme.spacingMedium),
 
@@ -808,6 +742,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
 
                     const SizedBox(height: AppTheme.spacingLarge),
+
+                    // User Profile
+                    _buildSection(
+                      title: 'User Profile',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: 'Name',
+                              hintText: 'Enter your name',
+                              filled: true,
+                              fillColor: AppTheme.lightBackground,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _classController,
+                            decoration: InputDecoration(
+                              labelText: 'Class',
+                              hintText: 'Enter your class (e.g. XII IPA 1)',
+                              filled: true,
+                              fillColor: AppTheme.lightBackground,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await _userProfileService.setUserName(_nameController.text.trim());
+                                await _userProfileService.setUserClass(_classController.text.trim());
+                                _showSnackBar('Profile saved');
+                              },
+                              icon: const Icon(Icons.save_outlined, size: 18),
+                              label: const Text('Save Profile'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryBlue,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline, size: 16, color: AppTheme.primaryBlue),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Name and class akan ditampilkan setiap selesai scan kartu NFC.',
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.primaryBlue),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     // App Info
                     Center(

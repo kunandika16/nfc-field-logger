@@ -98,7 +98,9 @@ class LogScreenState extends State<LogScreen> {
           .where((log) =>
               log.uid.toLowerCase().contains(_searchController.text.toLowerCase()) ||
               (log.city?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
-              (log.address?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false))
+              (log.address?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
+              (log.userName?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false) ||
+              (log.userClass?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false))
           .toList();
     }
 
@@ -137,39 +139,7 @@ class LogScreenState extends State<LogScreen> {
     }
   }
 
-  Future<void> _openSpreadsheetQuick() async {
-    try {
-      String? url = await _syncService.getSpreadsheetUrl();
-      if (url == null || url.isEmpty) {
-        final id = await GoogleSheetsService().getSavedSpreadsheetId();
-        if (id != null && id.isNotEmpty) {
-          url = GoogleSheetsService().getSpreadsheetUrl(id);
-        }
-      }
-      if (url == null || url.isEmpty) {
-        _showSnackBar('Spreadsheet belum dikonfigurasi. Gunakan Easy Setup atau set URL di Settings.', isError: true);
-        return;
-      }
-      final uri = Uri.parse(url);
-      // 1) Coba external app (Sheets / browser)
-      if (await canLaunchUrl(uri)) {
-        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (ok) return;
-      }
-      // 2) Coba in-app browser view
-      final okInApp = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-      if (okInApp) return;
-      // 3) Coba default
-      final okDefault = await launchUrl(uri, mode: LaunchMode.platformDefault);
-      if (okDefault) return;
 
-      // 4) Gagal semua -> salin ke clipboard
-      await Clipboard.setData(ClipboardData(text: url));
-      _showSnackBar('Gagal membuka. Link disalin ke clipboard:\n$url', isError: true);
-    } catch (e) {
-      _showSnackBar('Error membuka spreadsheet: $e', isError: true);
-    }
-  }
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -185,130 +155,199 @@ class LogScreenState extends State<LogScreen> {
   }
 
   void _showLogDetail(ScanLog log) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.height < 600;
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: isSmallScreen ? 16 : 40,
         ),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          width: double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: screenSize.height * (isSmallScreen ? 0.85 : 0.75),
+            maxWidth: 400,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Scan Details',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textDark,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    color: AppTheme.textSecondary,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // UID Card
+              // Header with close button
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                padding: const EdgeInsets.fromLTRB(24, 20, 20, 0),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Info Icon
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      width: 60,
+                      height: 60,
                       decoration: BoxDecoration(
                         color: AppTheme.primaryBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.credit_card,
+                        Icons.info_outline,
+                        size: 32,
                         color: AppTheme.primaryBlue,
-                        size: 20,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'UID',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Text(
-                              log.uid,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textDark,
-                                fontFamily: AppTheme.monoFontFamily,
-                                letterSpacing: 0.5,
-                              ),
-                              maxLines: 1,
-                            ),
-                          ),
-                        ],
+                    // Close Button
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                        iconSize: 20,
+                        color: AppTheme.textSecondary,
+                        padding: EdgeInsets.zero,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              // Details
-              _buildDetailItem(Icons.access_time, 'Time', DateFormat('MMM dd, yyyy • HH:mm:ss').format(log.timestamp)),
-              const SizedBox(height: 12),
-              _buildDetailItem(Icons.location_city, 'City', log.city ?? 'Unknown'),
-              const SizedBox(height: 12),
-              _buildDetailItem(Icons.location_on, 'Address', log.address ?? 'Unknown'),
-              const SizedBox(height: 12),
-              _buildDetailItem(Icons.my_location, 'Coordinates', log.formattedCoordinates),
-              const SizedBox(height: 16),
-              // Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: log.isSynced 
-                      ? AppTheme.successGreen.withOpacity(0.1)
-                      : AppTheme.warningOrange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+
+              // Content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title and Subtitle
+                      Text(
+                        'Detail Scan',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 20 : 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Informasi lengkap dari log scan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // UID Card (Primary)
+                      _buildLogPrimaryCard(log),
+
+                      const SizedBox(height: 16),
+
+                      // User Info Section (if available)
+                      if ((log.userName != null && log.userName!.isNotEmpty) || 
+                          (log.userClass != null && log.userClass!.isNotEmpty))
+                        _buildLogUserInfoSection(log),
+
+                      const SizedBox(height: 16),
+
+                      // Location & Time Section
+                      _buildLogLocationTimeSection(log),
+
+                      // Device Info (if available)
+                      if (log.deviceInfo != null && log.deviceInfo!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _buildLogDeviceInfoSection(log),
+                      ],
+
+                      const SizedBox(height: 20),
+
+                      // Sync Status
+                      _buildLogSyncStatus(log),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Log Detail Methods
+  Widget _buildLogPrimaryCard(ScanLog log) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryBlue.withOpacity(0.1),
+            AppTheme.primaryBlue.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primaryBlue.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.nfc,
+                  size: 24,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      log.isSynced ? Icons.check_circle : Icons.schedule,
-                      size: 16,
-                      color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
-                    ),
-                    const SizedBox(width: 6),
                     Text(
-                      log.isSynced ? 'Synced' : 'Pending Sync',
+                      'NFC UID',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      log.uid,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                        fontFamily: 'monospace',
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ],
@@ -316,8 +355,261 @@ class LogScreenState extends State<LogScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogUserInfoSection(ScanLog log) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
         ),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informasi User',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (log.userName != null && log.userName!.isNotEmpty)
+            _buildLogCompactDetailRow(
+              icon: Icons.person_outline,
+              label: 'Nama',
+              value: log.userName!,
+              iconColor: AppTheme.successGreen,
+            ),
+          if (log.userName != null && log.userName!.isNotEmpty && 
+              log.userClass != null && log.userClass!.isNotEmpty)
+            const SizedBox(height: 12),
+          if (log.userClass != null && log.userClass!.isNotEmpty)
+            _buildLogCompactDetailRow(
+              icon: Icons.school_outlined,
+              label: 'Kelas',
+              value: log.userClass!,
+              iconColor: AppTheme.successGreen,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogLocationTimeSection(ScanLog log) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lokasi & Waktu',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildLogCompactDetailRow(
+            icon: Icons.access_time,
+            label: 'Waktu',
+            value: DateFormat('dd MMM yyyy, HH:mm').format(log.timestamp),
+            iconColor: AppTheme.warningOrange,
+          ),
+          const SizedBox(height: 12),
+          _buildLogCompactDetailRow(
+            icon: Icons.location_city,
+            label: 'Kota',
+            value: (log.city == null || log.city!.isEmpty) ? 'Tidak diketahui' : log.city!,
+            iconColor: AppTheme.warningOrange,
+          ),
+          const SizedBox(height: 12),
+          _buildLogCompactDetailRow(
+            icon: Icons.location_on,
+            label: 'Alamat',
+            value: (log.address == null || log.address!.isEmpty) ? 'Tidak diketahui' : log.address!,
+            iconColor: AppTheme.warningOrange,
+          ),
+          if (log.latitude != null && log.longitude != null) ...[
+            const SizedBox(height: 12),
+            _buildLogCompactDetailRow(
+              icon: Icons.my_location,
+              label: 'Koordinat',
+              value: '${log.latitude!.toStringAsFixed(6)}, ${log.longitude!.toStringAsFixed(6)}',
+              iconColor: AppTheme.warningOrange,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogDeviceInfoSection(ScanLog log) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informasi Perangkat',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildLogCompactDetailRow(
+            icon: Icons.devices_other,
+            label: 'Perangkat',
+            value: log.deviceInfo!,
+            iconColor: AppTheme.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogSyncStatus(ScanLog log) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: log.isSynced 
+            ? AppTheme.successGreen.withOpacity(0.1)
+            : AppTheme.warningOrange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: log.isSynced 
+              ? AppTheme.successGreen.withOpacity(0.3)
+              : AppTheme.warningOrange.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: (log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              log.isSynced ? Icons.cloud_done : Icons.cloud_queue,
+              size: 20,
+              color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Status Sinkronisasi',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  log.isSynced ? 'Tersinkronisasi' : 'Menunggu Sinkronisasi',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: log.isSynced ? AppTheme.successGreen : AppTheme.warningOrange,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogCompactDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color iconColor,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textDark,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -382,12 +674,6 @@ class LogScreenState extends State<LogScreen> {
                           ),
                           Row(
                             children: [
-                              IconButton(
-                                onPressed: _openSpreadsheetQuick,
-                                icon: const Icon(Icons.table_chart_outlined),
-                                color: AppTheme.successGreen,
-                                tooltip: 'Open Spreadsheet',
-                              ),
                               IconButton(
                                 onPressed: _isExporting ? null : _exportCSV,
                                 icon: _isExporting
@@ -491,7 +777,7 @@ class LogScreenState extends State<LogScreen> {
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'Search UID or location...',
+                            hintText: 'Search UID, nama, kelas, atau location...',
                             hintStyle: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 14,
@@ -747,6 +1033,47 @@ class LogScreenState extends State<LogScreen> {
               ],
             ),
             const SizedBox(height: 8),
+            // Name and Class row
+            if (log.userName != null || log.userClass != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    if (log.userName != null) ...[
+                      Icon(Icons.person, size: 14, color: AppTheme.primaryBlue),
+                      const SizedBox(width: 4),
+                      Text(
+                        log.userName!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    if (log.userName != null && log.userClass != null) ...[
+                      Text(
+                        ' • ',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                    if (log.userClass != null) ...[
+                      Icon(Icons.school, size: 14, color: AppTheme.successGreen),
+                      const SizedBox(width: 4),
+                      Text(
+                        log.userClass!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.successGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             Row(
               children: [
                 Text(

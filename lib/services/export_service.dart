@@ -56,8 +56,8 @@ class ExportService {
 
       // Prepare CSV data
       List<List<String>> csvData = [
-        // Header row
-        ['UID', 'Timestamp', 'Latitude', 'Longitude', 'Address', 'City', 'Synced'],
+        // Header row (extended)
+        ['UID', 'Name', 'Class', 'Device', 'Timestamp', 'Latitude', 'Longitude', 'Address', 'City', 'Synced'],
         // Data rows
         ...logs.map((log) => log.toCsvRow()),
       ];
@@ -106,8 +106,8 @@ class ExportService {
 
       // Prepare CSV data
       List<List<String>> csvData = [
-        // Header row
-        ['UID', 'Timestamp', 'Latitude', 'Longitude', 'Address', 'City', 'Synced'],
+        // Header row (extended)
+        ['UID', 'Name', 'Class', 'Device', 'Timestamp', 'Latitude', 'Longitude', 'Address', 'City', 'Synced'],
         // Data rows
         ...logs.map((log) => log.toCsvRow()),
       ];

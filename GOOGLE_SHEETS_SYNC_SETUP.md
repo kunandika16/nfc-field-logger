@@ -184,10 +184,14 @@ function initializeSheet() {
 5. Akan muncul dialog "Authorize access":
    - Klik **Authorize access**
    - Pilih akun Google Anda
-   - Jika muncul warning "Google hasn't verified this app":
-     - Klik **Advanced**
-     - Klik **Go to [Project Name] (unsafe)**
-   - Klik **Allow** untuk memberikan izin
+   - **PASTI** muncul warning "Google hasn't verified this app" - ini NORMAL dan AMAN! ✅
+   - Di layar warning, scroll ke bawah sampai ketemu tulisan **"Advanced"** (kecil, di kiri bawah)
+   - Klik **"Advanced"**
+   - Akan muncul link baru: **"Go to [nama project] (unsafe)"**
+   - Klik link tersebut
+   - Layar baru akan muncul meminta permission
+   - Scroll ke bawah, klik **"Allow"**
+   - ⚠️ CATATAN: Warning "unsafe" ini muncul karena Google belum verifikasi script pribadi Anda. Ini AMAN karena script dibuat oleh Anda sendiri!
 
 6. Setelah berhasil, akan muncul **Web app URL**
    - URL berbentuk seperti: `https://script.google.com/macros/s/AKfycbxxx.../exec`

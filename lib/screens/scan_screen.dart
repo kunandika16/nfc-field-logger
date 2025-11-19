@@ -6,8 +6,11 @@ import 'settings_screen.dart';
 import '../services/location_service.dart';
 import '../services/database_helper.dart';
 import '../services/sync_service.dart';
+import '../services/feedback_service.dart';
 import '../utils/app_theme.dart';
 import '../widgets/nfc_success_dialog.dart';
+import '../services/device_info_service.dart';
+import '../services/user_profile_service.dart';
 import '../widgets/nfc_error_dialog.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -22,6 +25,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   final LocationService _locationService = LocationService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final SyncService _syncService = SyncService();
+  final FeedbackService _feedbackService = FeedbackService();
 
   bool _isScanning = false;
   bool _nfcAvailable = false;
@@ -40,6 +44,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     _initializeNfc();
     _initializeAnimation();
     _syncService.initialize();
+    _feedbackService.initialize();
     _loadStats();
     _checkConnectivity();
     // Listen to connectivity changes
@@ -97,12 +102,14 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     
     if (!_nfcAvailable) {
       print('NFC not available');
+      await _feedbackService.playErrorFeedback();
       _showSnackBar('NFC is not available on this device', isError: true);
       return;
     }
 
     if (_nfcService.isScanning) {
       print('NFC scan already in progress');
+      await _feedbackService.playInfoFeedback();
       _showSnackBar('Scan already in progress', isError: true);
       return;
     }
@@ -117,10 +124,10 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     try {
       print('Calling NFC service scanNfcTag...');
       // Scan NFC tag
-      final uid = await _nfcService.scanNfcTag();
-      print('NFC scan result: $uid');
+      final nfcData = await _nfcService.scanNfcTag();
+      print('NFC scan result: $nfcData');
 
-      if (uid == null || uid.isEmpty) {
+      if (nfcData == null || nfcData.uid.isEmpty) {
         print('No UID found');
         _showSnackBar('No UID found on NFC tag', isError: true);
         _stopScanning();
@@ -130,16 +137,51 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       print('Getting location data...');
       // Get location data
       final locationData = await _locationService.getCompleteLocationData();
-      print('Location data: ${locationData?.toString()}');
+      if (locationData == null) {
+        print('Location data unavailable, will save Unknown city/address');
+      } else {
+        print('Location data received: ${locationData.toString()}');
+      }
 
-      // Create scan log
+      // Get device info
+      final deviceInfo = await DeviceInfoService().getDeviceDescription();
+      
+      // Debug: Print NFC data received
+      print('=== DEBUG: NFC Data Received ===');
+      print('UID: ${nfcData.uid}');
+      print('Username from NFC: ${nfcData.userName}');
+      print('UserClass from NFC: ${nfcData.userClass}');
+      print('Raw text data: ${nfcData.rawTextData}');
+      print('================================');
+      
+      // Prioritize data from NFC tag, fallback to user profile
+      String? finalUserName = nfcData.userName;
+      String? finalUserClass = nfcData.userClass;
+      
+      if (finalUserName == null || finalUserClass == null) {
+        print('Getting user profile data as fallback...');
+        final profileService = UserProfileService();
+        final profileName = await profileService.getUserName();
+        final profileClass = await profileService.getUserClass();
+        print('Profile name: $profileName');
+        print('Profile class: $profileClass');
+        finalUserName ??= profileName;
+        finalUserClass ??= profileClass;
+      }
+
+      print('Final user data - Name: $finalUserName, Class: $finalUserClass');
+
+      // Create scan log including user/device metadata
       final scanLog = ScanLog(
-        uid: uid,
+        uid: nfcData.uid,
         timestamp: DateTime.now(),
         latitude: locationData?.latitude,
         longitude: locationData?.longitude,
         address: locationData?.address,
         city: locationData?.city,
+        userName: finalUserName,
+        userClass: finalUserClass,
+        deviceInfo: deviceInfo,
         isSynced: false,
       );
 
@@ -147,6 +189,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       // Save to database
       await _dbHelper.insertScanLog(scanLog);
       print('Saved successfully');
+
+      // Play success feedback (sound + vibration)
+      await _feedbackService.playSuccessFeedback();
 
       // Update UI
       setState(() {
@@ -164,6 +209,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
           barrierDismissible: false,
           builder: (context) => NfcSuccessDialog(
             scanLog: scanLog,
+            deviceInfo: scanLog.deviceInfo,
+            userName: scanLog.userName,
+            userClass: scanLog.userClass,
             onClose: () {
               Navigator.of(context).pop();
             },
@@ -179,6 +227,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     } catch (e) {
       print('NFC scan error: $e');
       
+      // Play error feedback (sound + vibration)
+      await _feedbackService.playErrorFeedback();
+      
       // Show error dialog for timeout
       if (mounted && e.toString().contains('timeout')) {
         await showDialog(
@@ -186,7 +237,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
           barrierDismissible: false,
           builder: (context) => NfcErrorDialog(
             title: 'Scan Failed',
-            message: 'No NFC tag detected within 10 seconds. Please make sure the NFC tag is close to your device and try again.',
+            message: 'No NFC tag detected within 5 seconds. Please make sure the NFC tag is close to your device and try again.',
             onClose: () {},
             onRetry: _startScan,
           ),

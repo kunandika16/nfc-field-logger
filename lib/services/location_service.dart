@@ -109,23 +109,12 @@ class LocationService {
           place.country,
         ].where((s) => s != null && s.isNotEmpty).join(', ');
 
-        // Determine city name: prefer subAdministrativeArea (regency/city level) over locality (which can be district/subdistrict)
-        // For Indonesia: subAdministrativeArea usually contains "Kota" or "Kabupaten" which is the city/regency level
+        // Determine city name: prefer subAdministrativeArea else fallback to locality directly
         String? cityName;
-        if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
-          cityName = place.subAdministrativeArea;
-        } else if (place.locality != null && place.locality!.isNotEmpty) {
-          // Only use locality if it doesn't look like a district name
-          // Districts often have generic names or end with specific suffixes
-          final locality = place.locality!;
-          // Filter out common district-level names
-          final districtKeywords = ['kecamatan', 'kelurahan', 'desa'];
-          final isDistrict = districtKeywords.any((keyword) => 
-            locality.toLowerCase().contains(keyword));
-          
-          if (!isDistrict) {
-            cityName = locality;
-          }
+        if (place.subAdministrativeArea != null && place.subAdministrativeArea!.trim().isNotEmpty) {
+          cityName = place.subAdministrativeArea!.trim();
+        } else if (place.locality != null && place.locality!.trim().isNotEmpty) {
+          cityName = place.locality!.trim();
         }
 
         return {
@@ -204,6 +193,11 @@ class LocationData {
     this.city,
     this.country,
   });
+
+  @override
+  String toString() {
+    return 'LocationData(lat: $latitude, lon: $longitude, city: ${city ?? 'null'}, address: ${address ?? 'null'}, country: ${country ?? 'null'})';
+  }
 
   String get formattedCoordinates {
     return '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';

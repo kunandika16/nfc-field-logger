@@ -6,142 +6,171 @@ import 'package:intl/intl.dart';
 class NfcSuccessDialog extends StatelessWidget {
   final ScanLog scanLog;
   final VoidCallback onClose;
+  final String? deviceInfo;
+  final String? userName;
+  final String? userClass;
 
   const NfcSuccessDialog({
     Key? key,
     required this.scanLog,
     required this.onClose,
+    this.deviceInfo,
+    this.userName,
+    this.userClass,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.height < 600;
+    
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isSmallScreen ? 16 : 40,
+      ),
       child: Container(
+        width: double.infinity,
+        constraints: BoxConstraints(
+          maxHeight: screenSize.height * (isSmallScreen ? 0.85 : 0.75),
+          maxWidth: 400,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Success Icon with background
+            // Header with close button
             Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppTheme.successGreen.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                size: 60,
-                color: AppTheme.successGreen,
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Success Title
-            Text(
-              'Scan Successful!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textDark,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Success Subtitle
-            Text(
-              'Data has been saved to log',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // NFC Details
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.lightBackground,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
+              padding: const EdgeInsets.fromLTRB(24, 20, 20, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildDetailRow(
-                    icon: Icons.nfc,
-                    label: 'NFC UID',
-                    value: scanLog.uid,
-                    iconColor: AppTheme.primaryBlue,
+                  // Success Icon
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: AppTheme.successGreen.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 32,
+                      color: AppTheme.successGreen,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildDetailRow(
-                    icon: Icons.access_time,
-                    label: 'Time',
-                    value: DateFormat('dd MMM yyyy, HH:mm').format(scanLog.timestamp),
-                    iconColor: AppTheme.primaryBlue,
+                  // Close Button
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: onClose,
+                      icon: const Icon(Icons.close),
+                      iconSize: 20,
+                      color: AppTheme.textSecondary,
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
-                  if (scanLog.city != null && scanLog.city!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      icon: Icons.location_city,
-                      label: 'City',
-                      value: scanLog.city!,
-                      iconColor: AppTheme.primaryBlue,
-                    ),
-                  ],
-                  if (scanLog.address != null && scanLog.address!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      icon: Icons.location_on,
-                      label: 'Address',
-                      value: scanLog.address!,
-                      iconColor: AppTheme.primaryBlue,
-                    ),
-                  ],
-                  if (scanLog.latitude != null && scanLog.longitude != null) ...[
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      icon: Icons.my_location,
-                      label: 'Coordinates',
-                      value: '${scanLog.latitude!.toStringAsFixed(6)}, ${scanLog.longitude!.toStringAsFixed(6)}',
-                      iconColor: AppTheme.primaryBlue,
-                    ),
-                  ],
                 ],
               ),
             ),
 
-            const SizedBox(height: 24),
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title and Subtitle
+                    Text(
+                      'Scan Berhasil!',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 20 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Data telah disimpan ke dalam log',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
 
-            // Close Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: onClose,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.successGreen,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  'Done',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                    const SizedBox(height: 24),
+
+                    // UID Card (Primary)
+                    _buildPrimaryCard(),
+
+                    const SizedBox(height: 16),
+
+                    // User Info Section (if available)
+                    if ((userName != null && userName!.isNotEmpty) || 
+                        (userClass != null && userClass!.isNotEmpty))
+                      _buildUserInfoSection(),
+
+                    const SizedBox(height: 16),
+
+                    // Location & Time Section
+                    _buildLocationTimeSection(),
+
+                    // Device Info (if available)
+                    if (deviceInfo != null && deviceInfo!.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _buildDeviceInfoSection(),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: onClose,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.successGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.done_rounded, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Selesai',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -151,7 +180,221 @@ class NfcSuccessDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow({
+  // Primary UID Card
+  Widget _buildPrimaryCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryBlue.withOpacity(0.1),
+            AppTheme.primaryBlue.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primaryBlue.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.nfc,
+                  size: 24,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NFC UID',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      scanLog.uid,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                        fontFamily: 'monospace',
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // User Information Section
+  Widget _buildUserInfoSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informasi User',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (userName != null && userName!.isNotEmpty)
+            _buildCompactDetailRow(
+              icon: Icons.person_outline,
+              label: 'Nama',
+              value: userName!,
+              iconColor: AppTheme.successGreen,
+            ),
+          if (userName != null && userName!.isNotEmpty && 
+              userClass != null && userClass!.isNotEmpty)
+            const SizedBox(height: 12),
+          if (userClass != null && userClass!.isNotEmpty)
+            _buildCompactDetailRow(
+              icon: Icons.school_outlined,
+              label: 'Kelas',
+              value: userClass!,
+              iconColor: AppTheme.successGreen,
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Location and Time Section
+  Widget _buildLocationTimeSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lokasi & Waktu',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildCompactDetailRow(
+            icon: Icons.access_time,
+            label: 'Waktu',
+            value: DateFormat('dd MMM yyyy, HH:mm').format(scanLog.timestamp),
+            iconColor: AppTheme.warningOrange,
+          ),
+          const SizedBox(height: 12),
+          _buildCompactDetailRow(
+            icon: Icons.location_city,
+            label: 'Kota',
+            value: (scanLog.city == null || scanLog.city!.isEmpty) ? 'Tidak diketahui' : scanLog.city!,
+            iconColor: AppTheme.warningOrange,
+          ),
+          const SizedBox(height: 12),
+          _buildCompactDetailRow(
+            icon: Icons.location_on,
+            label: 'Alamat',
+            value: (scanLog.address == null || scanLog.address!.isEmpty) ? 'Tidak diketahui' : scanLog.address!,
+            iconColor: AppTheme.warningOrange,
+          ),
+          if (scanLog.latitude != null && scanLog.longitude != null) ...[
+            const SizedBox(height: 12),
+            _buildCompactDetailRow(
+              icon: Icons.my_location,
+              label: 'Koordinat',
+              value: '${scanLog.latitude!.toStringAsFixed(6)}, ${scanLog.longitude!.toStringAsFixed(6)}',
+              iconColor: AppTheme.warningOrange,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Device Information Section
+  Widget _buildDeviceInfoSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informasi Perangkat',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildCompactDetailRow(
+            icon: Icons.devices_other,
+            label: 'Perangkat',
+            value: deviceInfo!,
+            iconColor: AppTheme.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Compact Detail Row for sections
+  Widget _buildCompactDetailRow({
     required IconData icon,
     required String label,
     required String value,
@@ -161,15 +404,15 @@ class NfcSuccessDialog extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: iconColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            size: 20,
+            size: 16,
             color: iconColor,
           ),
         ),
@@ -181,23 +424,41 @@ class NfcSuccessDialog extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.textDark,
                 ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  // Legacy method for backward compatibility (if needed)
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color iconColor,
+  }) {
+    return _buildCompactDetailRow(
+      icon: icon,
+      label: label,
+      value: value,
+      iconColor: iconColor,
     );
   }
 }
