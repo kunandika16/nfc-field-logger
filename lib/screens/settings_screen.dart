@@ -194,11 +194,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(AppTheme.spacingLarge),
-                child: Column(
+        child: Stack(
+          children: [
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header
@@ -359,6 +361,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+            // Watermark - positioned behind all content
+            Positioned.fill(
+              child: Center(
+                child: Transform.rotate(
+                  angle: -1.0, // Much more diagonal angle
+                  child: _buildWatermark(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWatermark() {
+    return IgnorePointer(
+      child: Container(
+        child: Text(
+          'FOR TESTING',
+          style: TextStyle(
+            fontSize: 48,
+            color: Colors.grey.withOpacity(0.08),
+            fontWeight: FontWeight.w900,
+            letterSpacing: 4,
+          ),
+        ),
       ),
     );
   }
