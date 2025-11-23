@@ -12,6 +12,7 @@ class ScanLog {
   final String? userClass;
   final String? deviceInfo;
   final bool isSynced;
+  final bool isLateScanning;
 
   ScanLog({
     this.id,
@@ -25,6 +26,7 @@ class ScanLog {
     this.userClass,
     this.deviceInfo,
     this.isSynced = false,
+    this.isLateScanning = false,
   });
 
   // Convert ScanLog to Map for database storage
@@ -41,6 +43,7 @@ class ScanLog {
       'user_class': userClass,
       'device_info': deviceInfo,
       'isSynced': isSynced ? 1 : 0,
+      'isLateScanning': isLateScanning ? 1 : 0,
     };
   }
 
@@ -58,6 +61,7 @@ class ScanLog {
       userClass: map['user_class'] as String?,
       deviceInfo: map['device_info'] as String?,
       isSynced: map['isSynced'] == 1,
+      isLateScanning: map['isLateScanning'] == 1,
     );
   }
 
@@ -76,6 +80,7 @@ class ScanLog {
       address ?? '',
       city ?? '',
       isSynced ? 'Yes' : 'No',
+      isLateScanning ? 'Late Scan' : 'Normal',
     ];
   }
 
@@ -92,6 +97,7 @@ class ScanLog {
     String? userClass,
     String? deviceInfo,
     bool? isSynced,
+    bool? isLateScanning,
   }) {
     return ScanLog(
       id: id ?? this.id,
@@ -105,6 +111,7 @@ class ScanLog {
       userClass: userClass ?? this.userClass,
       deviceInfo: deviceInfo ?? this.deviceInfo,
       isSynced: isSynced ?? this.isSynced,
+      isLateScanning: isLateScanning ?? this.isLateScanning,
     );
   }
 

@@ -9,6 +9,7 @@ class NfcSuccessDialog extends StatelessWidget {
   final String? deviceInfo;
   final String? userName;
   final String? userClass;
+  final String? warningMessage;
 
   const NfcSuccessDialog({
     Key? key,
@@ -17,6 +18,7 @@ class NfcSuccessDialog extends StatelessWidget {
     this.deviceInfo,
     this.userName,
     this.userClass,
+    this.warningMessage,
   }) : super(key: key);
 
   @override
@@ -56,18 +58,24 @@ class NfcSuccessDialog extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Success Icon
+                  // Icon berubah jika warning
                   Container(
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: AppTheme.successGreen.withOpacity(0.1),
+                      color: (warningMessage != null && warningMessage!.isNotEmpty)
+                          ? AppTheme.warningOrange.withOpacity(0.1)
+                          : AppTheme.successGreen.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.check_circle,
+                      (warningMessage != null && warningMessage!.isNotEmpty)
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle,
                       size: 32,
-                      color: AppTheme.successGreen,
+                      color: (warningMessage != null && warningMessage!.isNotEmpty)
+                          ? AppTheme.warningOrange
+                          : AppTheme.successGreen,
                     ),
                   ),
                   // Close Button
@@ -114,6 +122,39 @@ class NfcSuccessDialog extends StatelessWidget {
                         color: AppTheme.textSecondary,
                       ),
                     ),
+
+                    // Warning message jika ada
+                    if (warningMessage != null && warningMessage!.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.warningOrange.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.warningOrange,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: AppTheme.warningOrange, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                warningMessage!,
+                                style: TextStyle(
+                                  color: AppTheme.warningOrange,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 

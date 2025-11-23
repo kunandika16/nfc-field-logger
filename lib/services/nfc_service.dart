@@ -66,30 +66,36 @@ class NfcService {
       await NfcManager.instance.startSession(
         onDiscovered: (NfcTag tag) async {
           final data = tag.data;
+          print('DEBUG: NFC tag data structure: $data');
 
           try {
             // Extract UID and NDEF data
             final uid = _extractUid(tag);
+            print('DEBUG: Extracted UID: $uid');
 
             // Try to read NDEF data (nama dan kelas)
             final ndefData = _extractNdefData(tag);
+            print('DEBUG: NDEF data: "$ndefData"');
 
             // Also try to read from NfcV, MiFare, or other tag types
             String? alternativeData = _extractAlternativeData(tag);
+            print('DEBUG: Alternative data: "$alternativeData"');
 
             // Use whichever data source has content
             String? finalTextData =
                 ndefData?.isNotEmpty == true ? ndefData : alternativeData;
+            print('DEBUG: Final text data: "$finalTextData"');
 
             Map<String, String>? parsedData;
             if (finalTextData != null && finalTextData.isNotEmpty) {
               parsedData = _parseUserData(finalTextData);
             }
+            print('DEBUG: Parsed user data: $parsedData');
 
             final tagData = NfcTagData(
               uid: uid ?? 'Unknown',
-              userName: parsedData?['nama'],
-              userClass: parsedData?['kelas'],
+              userName: parsedData?['name'],
+              userClass: parsedData?['class'],
               rawTextData: ndefData,
             );
 
@@ -221,25 +227,61 @@ class NfcService {
   String? _extractNdefData(NfcTag tag) {
     try {
       final ndef = Ndef.from(tag);
+      print('DEBUG: NDEF object: $ndef');
 
       if (ndef != null && ndef.cachedMessage != null) {
         final message = ndef.cachedMessage!;
+        print('DEBUG: NDEF message with ${message.records.length} records');
 
         for (int i = 0; i < message.records.length; i++) {
           final record = message.records[i];
+          print('DEBUG: Record $i - TNF: ${record.typeNameFormat}, Type: ${record.type}, Payload length: ${record.payload.length}');
 
+          // Try Text record (type "T")
           if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown &&
-              record.type.isNotEmpty) {
-            // Check if it's a Text record (type "T")
-            if (record.type.length == 1 && record.type[0] == 0x54) {
-              final textData = _parseTextRecord(record.payload);
+              record.type.isNotEmpty &&
+              record.type.length == 1 && 
+              record.type[0] == 0x54) {
+            final textData = _parseTextRecord(record.payload);
+            print('DEBUG: Text record data: "$textData"');
+            if (textData != null && textData.isNotEmpty) {
               return textData;
             }
           }
+
+          // Try other record types - some apps write as different types
+          if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown) {
+            try {
+              // Try to decode as UTF-8 directly
+              final directText = utf8.decode(record.payload);
+              print('DEBUG: Direct UTF-8 decode: "$directText"');
+              if (directText.contains('Name') || directText.contains('Class')) {
+                return directText;
+              }
+            } catch (e) {
+              print('DEBUG: Direct decode failed: $e');
+            }
+          }
+
+          // Try external type or other formats
+          if (record.payload.isNotEmpty) {
+            try {
+              final rawText = String.fromCharCodes(record.payload);
+              print('DEBUG: Raw char codes: "$rawText"');
+              if (rawText.contains('Name') || rawText.contains('Class')) {
+                return rawText;
+              }
+            } catch (e) {
+              print('DEBUG: Raw decode failed: $e');
+            }
+          }
         }
+      } else {
+        print('DEBUG: No NDEF data found or null message');
       }
       return null;
     } catch (e) {
+      print('DEBUG: NDEF extraction error: $e');
       return null;
     }
   }
@@ -248,22 +290,29 @@ class NfcService {
   String? _parseTextRecord(Uint8List payload) {
     try {
       if (payload.isEmpty) {
+        print('DEBUG: Empty payload');
         return null;
       }
+
+      print('DEBUG: Text record payload bytes: ${payload.take(20).toList()}...');
 
       // First byte contains encoding and language code length
       final statusByte = payload[0];
       final isUtf16 = (statusByte & 0x80) != 0;
       final languageCodeLength = statusByte & 0x3F;
 
+      print('DEBUG: Status byte: $statusByte, UTF16: $isUtf16, Lang length: $languageCodeLength');
+
       // Skip status byte and language code
       final textStart = 1 + languageCodeLength;
 
       if (textStart >= payload.length) {
+        print('DEBUG: Text start ($textStart) >= payload length (${payload.length})');
         return null;
       }
 
       final textBytes = payload.sublist(textStart);
+      print('DEBUG: Text bytes length: ${textBytes.length}');
 
       String result;
       if (isUtf16) {
@@ -274,32 +323,48 @@ class NfcService {
         result = utf8.decode(textBytes);
       }
 
+      print('DEBUG: Decoded text result: "$result"');
       return result;
     } catch (e) {
-      return null;
+      print('DEBUG: Text record parse error: $e');
+      // Fallback - try direct decode
+      try {
+        final fallback = utf8.decode(payload);
+        print('DEBUG: Fallback decode: "$fallback"');
+        return fallback;
+      } catch (e2) {
+        print('DEBUG: Fallback also failed: $e2');
+        return null;
+      }
     }
   }
 
   // Parse user data from text content
   Map<String, String>? _parseUserData(String textData) {
     try {
+      print('DEBUG: Raw NFC text data: "$textData"'); // Debug log
       final data = <String, String>{};
 
-      // Try JSON format first: {"nama":"John","kelas":"12A"}
+      // Try JSON format first: {"Name":"John","Class":"12A"}
       if (textData.startsWith('{') && textData.endsWith('}')) {
         try {
           final jsonData = json.decode(textData) as Map<String, dynamic>;
-          if (jsonData['nama'] != null)
-            data['nama'] = jsonData['nama'].toString();
-          if (jsonData['kelas'] != null)
-            data['kelas'] = jsonData['kelas'].toString();
+          if (jsonData['Name'] != null)
+            data['name'] = jsonData['Name'].toString();
+          if (jsonData['Class'] != null)
+            data['class'] = jsonData['Class'].toString();
+          // Also try lowercase versions
+          if (jsonData['name'] != null)
+            data['name'] = jsonData['name'].toString();
+          if (jsonData['class'] != null)
+            data['class'] = jsonData['class'].toString();
           return data.isNotEmpty ? data : null;
         } catch (e) {
           // Not valid JSON, try other formats
         }
       }
 
-      // Try pipe format: nama:John Doe|kelas:12A
+      // Try pipe format: Name:John Doe|Class:12A
       if (textData.contains('|')) {
         final parts = textData.split('|');
         for (final part in parts) {
@@ -308,8 +373,8 @@ class NfcService {
             if (keyValue.length >= 2) {
               final key = keyValue[0].trim().toLowerCase();
               final value = keyValue.sublist(1).join(':').trim();
-              if (key == 'nama' && value.isNotEmpty) data['nama'] = value;
-              if (key == 'kelas' && value.isNotEmpty) data['kelas'] = value;
+              if (key == 'name' && value.isNotEmpty) data['name'] = value;
+              if (key == 'class' && value.isNotEmpty) data['class'] = value;
             }
           }
         }
@@ -322,17 +387,17 @@ class NfcService {
       if (textData.contains(';')) {
         final parts = textData.split(';');
         if (parts.length >= 2) {
-          final nama = parts[0].trim();
-          final kelas = parts[1].trim();
-          if (nama.isNotEmpty) data['nama'] = nama;
-          if (kelas.isNotEmpty) data['kelas'] = kelas;
+          final name = parts[0].trim();
+          final classValue = parts[1].trim();
+          if (name.isNotEmpty) data['name'] = name;
+          if (classValue.isNotEmpty) data['class'] = classValue;
           return data.isNotEmpty ? data : null;
         }
       }
 
       // Try line-based format:
-      // Nama: John Doe
-      // Kelas: 12A
+      // Name: John Doe
+      // Class: 12A
       final lines = textData.split('\n');
       for (int i = 0; i < lines.length; i++) {
         final line = lines[i];
@@ -341,14 +406,17 @@ class NfcService {
           if (parts.length >= 2) {
             final key = parts[0].trim().toLowerCase();
             final value = parts.sublist(1).join(':').trim();
-            if (key == 'nama' && value.isNotEmpty) data['nama'] = value;
-            if (key == 'kelas' && value.isNotEmpty) data['kelas'] = value;
+            if (key == 'name' && value.isNotEmpty) data['name'] = value;
+            if (key == 'class' && value.isNotEmpty) data['class'] = value;
           }
         }
       }
 
-      return data.isNotEmpty ? data : null;
+      final result = data.isNotEmpty ? data : null;
+      print('DEBUG: Parsed data: $result'); // Debug log
+      return result;
     } catch (e) {
+      print('DEBUG: Parse error: $e'); // Debug log
       return null;
     }
   }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'screens/scan_screen.dart';
+
+import 'screens/admin_scan_screen.dart';
 import 'screens/log_screen.dart';
+import 'screens/role_selection_screen.dart';
+import 'screens/student_main_screen.dart';
+import 'services/user_service.dart';
 import 'utils/app_theme.dart';
 
 void main() {
@@ -28,7 +32,89 @@ class NfcFieldLoggerApp extends StatelessWidget {
         fontFamily: AppTheme.fontFamily,
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      home: const SplashScreen(),
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    // Small delay for splash effect
+    await Future.delayed(const Duration(milliseconds: 1500));
+    
+    final userRole = await UserService.getUserRole();
+    
+    if (!mounted) return;
+    
+    Widget nextScreen;
+    if (userRole == null) {
+      nextScreen = const RoleSelectionScreen();
+    } else if (userRole == UserRole.student) {
+      nextScreen = const StudentMainScreen();
+    } else {
+      nextScreen = const MainScreen();
+    }
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => nextScreen),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.primaryBlue,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.contactless,
+                size: 60,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'NFC Field Logger',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Initializing...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -50,7 +136,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const ScanScreen(),
+      const AdminScanScreen(),
       LogScreen(key: _logScreenKey),
     ];
   }

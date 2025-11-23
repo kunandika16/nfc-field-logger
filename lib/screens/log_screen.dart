@@ -151,6 +151,95 @@ class LogScreenState extends State<LogScreen> {
     }
   }
 
+  Future<void> _openSpreadsheet() async {
+    const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/1KouwPJhSEUVoiFp5VBAIvvCL3E4Jx_xThdRYx3lTtYI/edit?pli=1&gid=0#gid=0';
+    
+    try {
+      final uri = Uri.parse(spreadsheetUrl);
+      
+      // Try different launch modes for better compatibility
+      bool launched = false;
+      
+      // Try external application first (preferred)
+      try {
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        AppLogger.debug('External application launch failed: $e');
+      }
+      
+      // If external app fails, try platform default
+      if (!launched) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        } catch (e) {
+          AppLogger.debug('Platform default launch failed: $e');
+        }
+      }
+      
+      // If still not launched, try in-app browser as last resort
+      if (!launched) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        } catch (e) {
+          AppLogger.debug('In-app webview launch failed: $e');
+        }
+      }
+      
+      if (launched) {
+        _showSnackBar('Opening Google Sheets...');
+      } else {
+        // Show dialog with URL to copy manually
+        _showUrlDialog(spreadsheetUrl);
+      }
+    } catch (e) {
+      AppLogger.error('Error opening spreadsheet', e);
+      _showUrlDialog(spreadsheetUrl);
+    }
+  }
+
+  void _showUrlDialog(String url) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Open Spreadsheet'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Unable to open automatically. You can copy the URL below:'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: SelectableText(
+                url,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: url));
+              Navigator.pop(context);
+              _showSnackBar('URL copied to clipboard');
+            },
+            child: const Text('Copy URL'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -675,6 +764,7 @@ class LogScreenState extends State<LogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.lightBackground,
+      resizeToAvoidBottomInset: false,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Stack(
@@ -682,10 +772,11 @@ class LogScreenState extends State<LogScreen> {
                 RefreshIndicator(
                   onRefresh: _loadData,
                   child: SafeArea(
-                    child: Padding(
+                    child: SingleChildScrollView(
                       padding: const EdgeInsets.all(AppTheme.spacingLarge),
                       child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       // Header with title and status
                       Row(
@@ -715,6 +806,12 @@ class LogScreenState extends State<LogScreen> {
                                     : const Icon(Icons.download_outlined),
                                 color: AppTheme.textDark,
                                 tooltip: 'Export CSV',
+                              ),
+                              IconButton(
+                                onPressed: _openSpreadsheet,
+                                icon: const Icon(Icons.table_chart_outlined),
+                                color: AppTheme.successGreen,
+                                tooltip: 'Open Google Sheets',
                               ),
                               IconButton(
                                 onPressed: _isSyncing ? null : _syncNow,
@@ -833,10 +930,13 @@ class LogScreenState extends State<LogScreen> {
                       const SizedBox(height: AppTheme.spacingMedium),
 
                       // Log list
-                      Expanded(
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.4,
                         child: _filteredLogs.isEmpty
                             ? _buildEmptyState()
                             : ListView.builder(
+                                shrinkWrap: true,
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 itemCount: _filteredLogs.length,
                                 itemBuilder: (context, index) {
                                   return _buildLogCard(_filteredLogs[index]);
@@ -849,10 +949,13 @@ class LogScreenState extends State<LogScreen> {
               ),
                 ),
                 // Watermark - positioned behind all content
-                Positioned.fill(
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.3,
+                  left: 0,
+                  right: 0,
                   child: Center(
                     child: Transform.rotate(
-                      angle: -1.0, // Much more diagonal angle
+                      angle: -0.8, // Slightly less diagonal angle
                       child: _buildWatermark(),
                     ),
                   ),
@@ -1024,11 +1127,21 @@ class LogScreenState extends State<LogScreen> {
       margin: const EdgeInsets.only(bottom: AppTheme.spacingMedium),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: log.isLateScanning 
+            ? Colors.red.withOpacity(0.02) 
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: log.isLateScanning 
+            ? Border.all(
+                color: Colors.red.withOpacity(0.3),
+                width: 2,
+              )
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: log.isLateScanning 
+                ? Colors.red.withOpacity(0.1)
+                : Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1043,14 +1156,56 @@ class LogScreenState extends State<LogScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  log.uid,
-                  style: TextStyle(
-                    fontFamily: AppTheme.monoFontFamily,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark,
-                    letterSpacing: 0.5,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        log.uid,
+                        style: TextStyle(
+                          fontFamily: AppTheme.monoFontFamily,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textDark,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      if (log.isLateScanning) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.schedule,
+                                size: 12,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                'LATE',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Container(
@@ -1195,10 +1350,10 @@ class LogScreenState extends State<LogScreen> {
         child: Text(
           'FOR TESTING',
           style: TextStyle(
-            fontSize: 48,
-            color: Colors.grey.withOpacity(0.08),
+            fontSize: 32,
+            color: Colors.grey.withOpacity(0.05),
             fontWeight: FontWeight.w900,
-            letterSpacing: 4,
+            letterSpacing: 3,
           ),
         ),
       ),

@@ -148,6 +148,13 @@ class GoogleSheetsService {
                           textFormat: sheets.TextFormat(bold: true),
                         ),
                       ),
+                      sheets.CellData(
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'scan_status'),
+                        userEnteredFormat: sheets.CellFormat(
+                          textFormat: sheets.TextFormat(bold: true),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -187,6 +194,14 @@ class GoogleSheetsService {
         _sheetsApi = sheets.SheetsApi(auth);
       }
 
+      // First, get the current number of rows to determine where to insert
+      final currentData = await _sheetsApi!.spreadsheets.values.get(
+        spreadsheetId,
+        'Scan Logs!A:K',
+      );
+      
+      final startRow = (currentData.values?.length ?? 1) + 1;
+
       final values = logs.map((log) {
         final formattedTimestamp =
             '${log.timestamp.year}-${log.timestamp.month.toString().padLeft(2, '0')}-${log.timestamp.day.toString().padLeft(2, '0')} ' +
@@ -202,6 +217,7 @@ class GoogleSheetsService {
           log.userName ?? '',
           log.userClass ?? '',
           log.deviceInfo ?? '',
+          log.isLateScanning ? 'LATE SCAN' : 'NORMAL',
         ];
         
         return row;
@@ -211,15 +227,65 @@ class GoogleSheetsService {
         values: values,
       );
 
-      final response = await _sheetsApi!.spreadsheets.values.append(
+      // Append the data
+      await _sheetsApi!.spreadsheets.values.append(
         valueRange,
         spreadsheetId,
-        'Scan Logs!A:I',
+        'Scan Logs!A:K',
         valueInputOption: 'RAW',
       );
 
+      // Apply red background and text formatting for late scans
+      final requests = <sheets.Request>[];
+      for (int i = 0; i < logs.length; i++) {
+        if (logs[i].isLateScanning) {
+          final rowIndex = startRow + i - 1; // 0-based index
+          
+          requests.add(sheets.Request(
+            repeatCell: sheets.RepeatCellRequest(
+              range: sheets.GridRange(
+                sheetId: 0, // Assuming first sheet
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 11, // A to K columns
+              ),
+              cell: sheets.CellData(
+                userEnteredFormat: sheets.CellFormat(
+                  backgroundColor: sheets.Color(
+                    red: 1.0,     // Red background
+                    green: 0.8,   // Light red
+                    blue: 0.8,    // Light red
+                    alpha: 1.0,
+                  ),
+                  textFormat: sheets.TextFormat(
+                    foregroundColor: sheets.Color(
+                      red: 0.9,   // Dark red text
+                      green: 0.0,
+                      blue: 0.0,
+                      alpha: 1.0,
+                    ),
+                    bold: true,
+                  ),
+                ),
+              ),
+              fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat',
+            ),
+          ));
+        }
+      }
+
+      // Apply formatting if there are late scans
+      if (requests.isNotEmpty) {
+        await _sheetsApi!.spreadsheets.batchUpdate(
+          sheets.BatchUpdateSpreadsheetRequest(requests: requests),
+          spreadsheetId,
+        );
+      }
+
       return true;
     } catch (e) {
+      print('Error in appendData: $e');
       return false;
     }
   }
@@ -237,7 +303,7 @@ class GoogleSheetsService {
 
       // Add missing headers if they don't exist
       final headerValues = [
-        ['user_name', 'user_class', 'device_info']
+        ['user_name', 'user_class', 'device_info', 'scan_status']
       ];
 
       final valueRange = sheets.ValueRange(
@@ -247,7 +313,7 @@ class GoogleSheetsService {
       await _sheetsApi!.spreadsheets.values.update(
         valueRange,
         spreadsheetId,
-        'Scan Logs!G1:I1',
+        'Scan Logs!G1:K1',
         valueInputOption: 'RAW',
       );
 
@@ -281,6 +347,137 @@ class GoogleSheetsService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_spreadsheetIdKey);
     await prefs.remove(_spreadsheetNameKey);
+  }
+
+  // Fix existing spreadsheet data to add scan status and formatting
+  Future<bool> fixExistingSpreadsheetData(String spreadsheetId) async {
+    try {
+      if (_sheetsApi == null) {
+        final auth = await _googleSignIn.authenticatedClient();
+        if (auth == null) {
+          throw Exception('Not authenticated');
+        }
+        _sheetsApi = sheets.SheetsApi(auth);
+      }
+
+      // Get all existing data
+      final currentData = await _sheetsApi!.spreadsheets.values.get(
+        spreadsheetId,
+        'Scan Logs!A:K',
+      );
+
+      if (currentData.values == null || currentData.values!.length <= 1) {
+        return true; // No data to fix
+      }
+
+      final values = currentData.values!;
+      final requests = <sheets.Request>[];
+      final statusUpdates = <List<Object?>>[];
+
+      // Process each row (skip header row)
+      for (int i = 1; i < values.length; i++) {
+        final row = values[i];
+        if (row.length >= 2) {
+          // Check if timestamp indicates late scan (after 13:00)
+          String timestamp = row.length > 1 ? row[1].toString() : '';
+          bool isLateScanning = false;
+          
+          if (timestamp.isNotEmpty) {
+            try {
+              // Parse timestamp to check if it's after 13:00
+              final parts = timestamp.split(' ');
+              if (parts.length > 1) {
+                final timePart = parts[1];
+                final hourStr = timePart.split(':')[0];
+                final hour = int.tryParse(hourStr) ?? 0;
+                isLateScanning = hour >= 13;
+              }
+            } catch (e) {
+              // Skip if can't parse timestamp
+            }
+          }
+
+          // Prepare scan status value
+          final statusValue = isLateScanning ? 'LATE SCAN' : 'NORMAL';
+          statusUpdates.add([statusValue]);
+
+          // Apply formatting for late scans
+          if (isLateScanning) {
+            requests.add(sheets.Request(
+              repeatCell: sheets.RepeatCellRequest(
+                range: sheets.GridRange(
+                  sheetId: 0,
+                  startRowIndex: i,
+                  endRowIndex: i + 1,
+                  startColumnIndex: 0,
+                  endColumnIndex: 11, // A to K columns
+                ),
+                cell: sheets.CellData(
+                  userEnteredFormat: sheets.CellFormat(
+                    backgroundColor: sheets.Color(
+                      red: 1.0,
+                      green: 0.8,
+                      blue: 0.8,
+                      alpha: 1.0,
+                    ),
+                    textFormat: sheets.TextFormat(
+                      foregroundColor: sheets.Color(
+                        red: 0.9,
+                        green: 0.0,
+                        blue: 0.0,
+                        alpha: 1.0,
+                      ),
+                      bold: true,
+                    ),
+                  ),
+                ),
+                fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat',
+              ),
+            ));
+          }
+        } else {
+          // Add default status for incomplete rows
+          statusUpdates.add(['NORMAL']);
+        }
+      }
+
+      // Update all scan status values at once
+      if (statusUpdates.isNotEmpty) {
+        await _sheetsApi!.spreadsheets.values.update(
+          sheets.ValueRange(values: statusUpdates),
+          spreadsheetId,
+          'Scan Logs!K2:K${values.length}',
+          valueInputOption: 'RAW',
+        );
+      }
+
+      // Apply formatting if there are late scans
+      if (requests.isNotEmpty) {
+        await _sheetsApi!.spreadsheets.batchUpdate(
+          sheets.BatchUpdateSpreadsheetRequest(requests: requests),
+          spreadsheetId,
+        );
+      }
+
+      return true;
+    } catch (e) {
+      print('Error in fixExistingSpreadsheetData: $e');
+      return false;
+    }
+  }
+
+  // Public method to fix current spreadsheet (can be called from UI)
+  Future<bool> fixCurrentSpreadsheet() async {
+    try {
+      final spreadsheetId = await getSavedSpreadsheetId();
+      if (spreadsheetId != null && spreadsheetId.isNotEmpty) {
+        return await fixExistingSpreadsheetData(spreadsheetId);
+      }
+      return false;
+    } catch (e) {
+      print('Error fixing current spreadsheet: $e');
+      return false;
+    }
   }
 
   // Get spreadsheet URL

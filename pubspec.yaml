@@ -52,6 +52,16 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  # Use existing Flutter default icon for now - will be replaced when custom icon is available
+  # To generate custom icon: create nfc_icon.png (1024x1024) in assets/icon/ then uncomment:
+  image_path: "assets/icon/nfc_icon.png"

@@ -6,6 +6,8 @@ import '../services/database_helper.dart';
 import '../utils/app_theme.dart';
 import '../services/user_profile_service.dart';
 import '../services/google_sheets_service.dart';
+import '../services/user_service.dart';
+import 'role_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -37,11 +39,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _lastSyncTime;
   int _totalLogs = 0;
   int _unsyncedLogs = 0;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    final isAdmin = await UserService.isAdmin();
+    setState(() {
+      _isAdmin = isAdmin;
+    });
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Apakah Anda yakin ingin logout dari admin mode?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await UserService.clearUserRole();
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RoleSelectionScreen(),
+                  ),
+                  (route) => false,
+                );
+              }
+            },
+            child: Text(
+              'Logout',
+              style: TextStyle(color: AppTheme.errorRed),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadSettings() async {
@@ -212,16 +258,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: AppTheme.textDark,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Settings',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                color: AppTheme.textDark,
-                                fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Settings',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      color: AppTheme.textDark,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
+                              if (_isAdmin) ...[
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.successGreen.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.admin_panel_settings,
+                                        size: 16,
+                                        color: AppTheme.successGreen,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Administrator Mode',
+                                        style: TextStyle(
+                                          color: AppTheme.successGreen,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
+                        if (_isAdmin)
+                          IconButton(
+                            onPressed: _logout,
+                            icon: const Icon(Icons.logout),
+                            color: AppTheme.errorRed,
+                            tooltip: 'Logout Admin',
+                          ),
                       ],
                     ),
 

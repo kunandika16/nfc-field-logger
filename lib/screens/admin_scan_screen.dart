@@ -14,14 +14,14 @@ import '../services/user_profile_service.dart';
 import '../widgets/nfc_error_dialog.dart';
 import '../utils/logger.dart';
 
-class ScanScreen extends StatefulWidget {
-  const ScanScreen({Key? key}) : super(key: key);
+class AdminScanScreen extends StatefulWidget {
+  const AdminScanScreen({Key? key}) : super(key: key);
 
   @override
-  State<ScanScreen> createState() => _ScanScreenState();
+  State<AdminScanScreen> createState() => _AdminScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen>
+class _AdminScanScreenState extends State<AdminScanScreen>
     with SingleTickerProviderStateMixin {
   final NfcService _nfcService = NfcService();
   final LocationService _locationService = LocationService();
@@ -100,6 +100,10 @@ class _ScanScreenState extends State<ScanScreen>
   }
 
   Future<void> _startScan() async {
+    // Check if scanning after 13:00
+    final now = DateTime.now();
+    bool isLateScanning = now.hour >= 13;
+
     if (!_nfcAvailable) {
       await _feedbackService.playErrorFeedback();
       _showSnackBar('NFC is not available on this device', isError: true);
@@ -159,6 +163,7 @@ class _ScanScreenState extends State<ScanScreen>
         userClass: finalUserClass,
         deviceInfo: deviceInfo,
         isSynced: false,
+        isLateScanning: isLateScanning,
       );
 
       // Save to database
@@ -178,6 +183,10 @@ class _ScanScreenState extends State<ScanScreen>
 
       // Show success dialog
       if (mounted) {
+        String? warningMessage;
+        if (scanLog.timestamp.hour >= 13) {
+          warningMessage = 'Warning : Scan Melepasi Waktu Dibenarkan';
+        }
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -186,6 +195,7 @@ class _ScanScreenState extends State<ScanScreen>
             deviceInfo: scanLog.deviceInfo,
             userName: scanLog.userName,
             userClass: scanLog.userClass,
+            warningMessage: warningMessage,
             onClose: () {
               Navigator.of(context).pop();
             },
@@ -246,6 +256,77 @@ class _ScanScreenState extends State<ScanScreen>
     );
   }
 
+  void _showCenterMessage(String message, {bool isError = false, bool isWarning = false}) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.3),
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isError 
+                      ? Icons.error_outline 
+                      : isWarning 
+                          ? Icons.warning_amber_outlined
+                          : Icons.check_circle_outline,
+                  size: 48,
+                  color: isError 
+                      ? AppTheme.errorRed 
+                      : isWarning 
+                          ? Colors.orange
+                          : AppTheme.successGreen,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textDark,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isError ? AppTheme.errorRed : AppTheme.successGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('OK'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -261,22 +342,26 @@ class _ScanScreenState extends State<ScanScreen>
           children: [
             RefreshIndicator(
               onRefresh: _onRefresh,
-              child: CustomScrollView(
+              child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverFillRemaining(
-                    hasScrollBody: true,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingLarge),
-                      child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header with title and status
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                               MediaQuery.of(context).padding.top -
+                               MediaQuery.of(context).padding.bottom -
+                               (AppTheme.spacingLarge * 2),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header with title and status
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Scan',
+                            'Scan NFC',
                             style: Theme.of(context)
                                 .textTheme
                                 .headlineMedium
@@ -348,7 +433,8 @@ class _ScanScreenState extends State<ScanScreen>
                       const SizedBox(height: AppTheme.spacingLarge),
 
                       // Main scan card
-                      Expanded(
+                      Container(
+                        height: MediaQuery.of(context).size.height * 0.5,
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -470,13 +556,12 @@ class _ScanScreenState extends State<ScanScreen>
                           ),
                         ],
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
             // Watermark - positioned behind all content
             Positioned.fill(
               child: Center(
@@ -519,10 +604,10 @@ class _ScanScreenState extends State<ScanScreen>
     return IgnorePointer(
       child: Container(
         child: Text(
-          'FOR TESTING',
+          'ADMIN MODE',
           style: TextStyle(
             fontSize: 48,
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.grey.withOpacity(0.06),
             fontWeight: FontWeight.w900,
             letterSpacing: 4,
           ),
