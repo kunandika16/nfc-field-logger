@@ -22,7 +22,7 @@ class SyncService {
 
   // Hardcoded Apps Script Web App URL
   static const String _hardcodedWebAppUrl =
-      'https://script.google.com/macros/s/AKfycbyQa3lLY_p6ApbwbJRqfPW0ABHSO8S70uu_E9OwEqpKRDOfS89H1x-M7Wtq8ENX8jeraQ/exec';
+      'https://script.google.com/macros/s/AKfycbwYukDgNS4kZVNCRmkROIRVMX5BebSmUw-J5Ad86KDyhw9KX2gIvAAzD4itqI3B9EmZLw/exec';
 
   // Keys for SharedPreferences
   static const String _webAppUrlKey = 'google_sheets_web_app_url';

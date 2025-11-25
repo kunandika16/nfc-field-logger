@@ -85,7 +85,7 @@ class _StudentScanScreenState extends State<StudentScanScreen>
 
   Future<void> _startScan() async {
     final now = DateTime.now();
-    bool isLateScanning = now.hour >= 13;
+    bool isLateScanning = now.hour >= 18;
 
     if (!_nfcAvailable) {
       await _feedbackService.playErrorFeedback();
@@ -160,7 +160,7 @@ class _StudentScanScreenState extends State<StudentScanScreen>
       // Show success dialog
       if (mounted) {
         String? warningMessage;
-        if (scanLog.timestamp.hour >= 13) {
+        if (scanLog.timestamp.hour >= 18) {
           warningMessage = 'Warning: Scan Melepasi Waktu Dibenarkan!';
         }
         await showDialog(

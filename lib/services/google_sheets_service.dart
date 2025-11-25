@@ -390,7 +390,7 @@ class GoogleSheetsService {
                 final timePart = parts[1];
                 final hourStr = timePart.split(':')[0];
                 final hour = int.tryParse(hourStr) ?? 0;
-                isLateScanning = hour >= 13;
+                isLateScanning = hour >= 18;
               }
             } catch (e) {
               // Skip if can't parse timestamp
