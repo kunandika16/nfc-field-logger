@@ -587,7 +587,7 @@ class LogScreenState extends State<LogScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Informasi Perangkat',
+            'Informasi Device',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -597,7 +597,7 @@ class LogScreenState extends State<LogScreen> {
           const SizedBox(height: 12),
           _buildLogCompactDetailRow(
             icon: Icons.devices_other,
-            label: 'Perangkat',
+            label: 'Device',
             value: log.deviceInfo!,
             iconColor: AppTheme.textSecondary,
           ),
@@ -949,17 +949,17 @@ class LogScreenState extends State<LogScreen> {
               ),
                 ),
                 // Watermark - positioned behind all content
-                Positioned(
-                  top: MediaQuery.of(context).size.height * 0.3,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Transform.rotate(
-                      angle: -0.8, // Slightly less diagonal angle
-                      child: _buildWatermark(),
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   top: MediaQuery.of(context).size.height * 0.3,
+                //   left: 0,
+                //   right: 0,
+                //   child: Center(
+                //     child: Transform.rotate(
+                //       angle: -0.8, // Slightly less diagonal angle
+                //       child: _buildWatermark(),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
     );

@@ -422,7 +422,7 @@ class NfcSuccessDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Informasi Perangkat',
+            'Informasi Device',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -432,7 +432,7 @@ class NfcSuccessDialog extends StatelessWidget {
           const SizedBox(height: 12),
           _buildCompactDetailRow(
             icon: Icons.devices_other,
-            label: 'Perangkat',
+            label: 'Device',
             value: deviceInfo!,
             iconColor: AppTheme.textSecondary,
           ),

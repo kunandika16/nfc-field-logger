@@ -454,14 +454,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             // Watermark - positioned behind all content
-            Positioned.fill(
-              child: Center(
-                child: Transform.rotate(
-                  angle: -1.0, // Much more diagonal angle
-                  child: _buildWatermark(),
-                ),
-              ),
-            ),
+            // Positioned.fill(
+            //   child: Center(
+            //     child: Transform.rotate(
+            //       angle: -1.0, // Much more diagonal angle
+            //       child: _buildWatermark(),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

@@ -470,7 +470,7 @@ class _StudentScanScreenState extends State<StudentScanScreen>
                                       // Instruction text
                                       Text(
                                         _isScanning
-                                            ? 'Tempelkan kartu NFC\nke perangkat Anda'
+                                            ? 'Tempelkan kartu NFC\nke device Anda'
                                             : 'Tekan tombol untuk memulai\nscan kartu NFC',
                                         style: const TextStyle(
                                           fontSize: 18,
@@ -546,14 +546,14 @@ class _StudentScanScreenState extends State<StudentScanScreen>
                 ),
               ),
             // Watermark - positioned behind all content
-            Positioned.fill(
-              child: Center(
-                child: Transform.rotate(
-                  angle: -1.0, // Much more diagonal angle
-                  child: _buildWatermark(),
-                ),
-              ),
-            ),
+            // Positioned.fill(
+            //   child: Center(
+            //     child: Transform.rotate(
+            //       angle: -1.0, // Much more diagonal angle
+            //       child: _buildWatermark(),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),
