@@ -112,6 +112,14 @@ class LogScreenState extends State<LogScreen> {
               (log.userClass
                       ?.toLowerCase()
                       .contains(_searchController.text.toLowerCase()) ??
+                  false) ||
+              (log.userDevice
+                      ?.toLowerCase()
+                      .contains(_searchController.text.toLowerCase()) ??
+                  false) ||
+              (log.userBrand
+                      ?.toLowerCase()
+                      .contains(_searchController.text.toLowerCase()) ??
                   false))
           .toList();
     }
@@ -359,7 +367,9 @@ class LogScreenState extends State<LogScreen> {
 
                       // User Info Section (if available)
                       if ((log.userName != null && log.userName!.isNotEmpty) ||
-                          (log.userClass != null && log.userClass!.isNotEmpty))
+                          (log.userClass != null && log.userClass!.isNotEmpty) ||
+                          (log.userDevice != null && log.userDevice!.isNotEmpty) ||
+                          (log.userBrand != null && log.userBrand!.isNotEmpty))
                         _buildLogUserInfoSection(log),
 
                       const SizedBox(height: 16),
@@ -501,6 +511,30 @@ class LogScreenState extends State<LogScreen> {
               icon: Icons.school_outlined,
               label: 'Kelas',
               value: log.userClass!,
+              iconColor: AppTheme.successGreen,
+            ),
+          if (log.userClass != null &&
+              log.userClass!.isNotEmpty &&
+              log.userDevice != null &&
+              log.userDevice!.isNotEmpty)
+            const SizedBox(height: 12),
+          if (log.userDevice != null && log.userDevice!.isNotEmpty)
+            _buildLogCompactDetailRow(
+              icon: Icons.smartphone_outlined,
+              label: 'Device',
+              value: log.userDevice!,
+              iconColor: AppTheme.successGreen,
+            ),
+          if (log.userDevice != null &&
+              log.userDevice!.isNotEmpty &&
+              log.userBrand != null &&
+              log.userBrand!.isNotEmpty)
+            const SizedBox(height: 12),
+          if (log.userBrand != null && log.userBrand!.isNotEmpty)
+            _buildLogCompactDetailRow(
+              icon: Icons.branding_watermark_outlined,
+              label: 'Brand',
+              value: log.userBrand!,
               iconColor: AppTheme.successGreen,
             ),
         ],

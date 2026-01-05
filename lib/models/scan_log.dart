@@ -10,6 +10,8 @@ class ScanLog {
   final String? city;
   final String? userName;
   final String? userClass;
+  final String? userDevice;
+  final String? userBrand;
   final String? deviceInfo;
   final bool isSynced;
   final bool isLateScanning;
@@ -24,6 +26,8 @@ class ScanLog {
     this.city,
     this.userName,
     this.userClass,
+    this.userDevice,
+    this.userBrand,
     this.deviceInfo,
     this.isSynced = false,
     this.isLateScanning = false,
@@ -41,6 +45,8 @@ class ScanLog {
       'city': city,
       'user_name': userName,
       'user_class': userClass,
+      'user_device': userDevice,
+      'user_brand': userBrand,
       'device_info': deviceInfo,
       'isSynced': isSynced ? 1 : 0,
       'isLateScanning': isLateScanning ? 1 : 0,
@@ -59,6 +65,8 @@ class ScanLog {
       city: map['city'] as String?,
       userName: map['user_name'] as String?,
       userClass: map['user_class'] as String?,
+      userDevice: map['user_device'] as String?,
+      userBrand: map['user_brand'] as String?,
       deviceInfo: map['device_info'] as String?,
       isSynced: map['isSynced'] == 1,
       isLateScanning: map['isLateScanning'] == 1,
@@ -73,6 +81,8 @@ class ScanLog {
       uid,
       userName ?? '',
       userClass ?? '',
+      userDevice ?? '',
+      userBrand ?? '',
       deviceInfo ?? '',
       formattedTimestamp,
       latitude?.toString() ?? '',
@@ -95,6 +105,8 @@ class ScanLog {
     String? city,
     String? userName,
     String? userClass,
+    String? userDevice,
+    String? userBrand,
     String? deviceInfo,
     bool? isSynced,
     bool? isLateScanning,
@@ -109,6 +121,8 @@ class ScanLog {
       city: city ?? this.city,
       userName: userName ?? this.userName,
       userClass: userClass ?? this.userClass,
+      userDevice: userDevice ?? this.userDevice,
+      userBrand: userBrand ?? this.userBrand,
       deviceInfo: deviceInfo ?? this.deviceInfo,
       isSynced: isSynced ?? this.isSynced,
       isLateScanning: isLateScanning ?? this.isLateScanning,

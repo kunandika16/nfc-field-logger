@@ -61,12 +61,15 @@ class ExportService {
           'Name',
           'Class',
           'Device',
+          'Brand',
+          'Device Info',
           'Timestamp',
           'Latitude',
           'Longitude',
           'Address',
           'City',
-          'Synced'
+          'Synced',
+          'Status'
         ],
         // Data rows
         ...logs.map((log) => log.toCsvRow()),
@@ -122,12 +125,15 @@ class ExportService {
           'Name',
           'Class',
           'Device',
+          'Brand',
+          'Device Info',
           'Timestamp',
           'Latitude',
           'Longitude',
           'Address',
           'City',
-          'Synced'
+          'Synced',
+          'Status'
         ],
         // Data rows
         ...logs.map((log) => log.toCsvRow()),

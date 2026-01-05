@@ -9,6 +9,8 @@ class NfcSuccessDialog extends StatelessWidget {
   final String? deviceInfo;
   final String? userName;
   final String? userClass;
+  final String? userDevice;
+  final String? userBrand;
   final String? warningMessage;
 
   const NfcSuccessDialog({
@@ -18,6 +20,8 @@ class NfcSuccessDialog extends StatelessWidget {
     this.deviceInfo,
     this.userName,
     this.userClass,
+    this.userDevice,
+    this.userBrand,
     this.warningMessage,
   }) : super(key: key);
 
@@ -165,7 +169,9 @@ class NfcSuccessDialog extends StatelessWidget {
 
                     // User Info Section (if available)
                     if ((userName != null && userName!.isNotEmpty) ||
-                        (userClass != null && userClass!.isNotEmpty))
+                        (userClass != null && userClass!.isNotEmpty) ||
+                        (userDevice != null && userDevice!.isNotEmpty) ||
+                        (userBrand != null && userBrand!.isNotEmpty))
                       _buildUserInfoSection(),
 
                     const SizedBox(height: 16),
@@ -334,6 +340,30 @@ class NfcSuccessDialog extends StatelessWidget {
               icon: Icons.school_outlined,
               label: 'Kelas',
               value: userClass!,
+              iconColor: AppTheme.successGreen,
+            ),
+          if (userClass != null &&
+              userClass!.isNotEmpty &&
+              userDevice != null &&
+              userDevice!.isNotEmpty)
+            const SizedBox(height: 12),
+          if (userDevice != null && userDevice!.isNotEmpty)
+            _buildCompactDetailRow(
+              icon: Icons.smartphone_outlined,
+              label: 'Device',
+              value: userDevice!,
+              iconColor: AppTheme.successGreen,
+            ),
+          if (userDevice != null &&
+              userDevice!.isNotEmpty &&
+              userBrand != null &&
+              userBrand!.isNotEmpty)
+            const SizedBox(height: 12),
+          if (userBrand != null && userBrand!.isNotEmpty)
+            _buildCompactDetailRow(
+              icon: Icons.branding_watermark_outlined,
+              label: 'Brand',
+              value: userBrand!,
               iconColor: AppTheme.successGreen,
             ),
         ],

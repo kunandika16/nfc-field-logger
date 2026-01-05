@@ -143,6 +143,20 @@ class GoogleSheetsService {
                       ),
                       sheets.CellData(
                         userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'user_device'),
+                        userEnteredFormat: sheets.CellFormat(
+                          textFormat: sheets.TextFormat(bold: true),
+                        ),
+                      ),
+                      sheets.CellData(
+                        userEnteredValue:
+                            sheets.ExtendedValue(stringValue: 'user_brand'),
+                        userEnteredFormat: sheets.CellFormat(
+                          textFormat: sheets.TextFormat(bold: true),
+                        ),
+                      ),
+                      sheets.CellData(
+                        userEnteredValue:
                             sheets.ExtendedValue(stringValue: 'device_info'),
                         userEnteredFormat: sheets.CellFormat(
                           textFormat: sheets.TextFormat(bold: true),
@@ -197,7 +211,7 @@ class GoogleSheetsService {
       // First, get the current number of rows to determine where to insert
       final currentData = await _sheetsApi!.spreadsheets.values.get(
         spreadsheetId,
-        'Scan Logs!A:K',
+        'Scan Logs!A:M',
       );
       
       final startRow = (currentData.values?.length ?? 1) + 1;
@@ -216,6 +230,8 @@ class GoogleSheetsService {
           log.city ?? '',
           log.userName ?? '',
           log.userClass ?? '',
+          log.userDevice ?? '',
+          log.userBrand ?? '',
           log.deviceInfo ?? '',
           log.isLateScanning ? 'LATE SCAN' : 'NORMAL',
         ];
@@ -231,7 +247,7 @@ class GoogleSheetsService {
       await _sheetsApi!.spreadsheets.values.append(
         valueRange,
         spreadsheetId,
-        'Scan Logs!A:K',
+        'Scan Logs!A:M',
         valueInputOption: 'RAW',
       );
 
@@ -248,7 +264,7 @@ class GoogleSheetsService {
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: 0,
-                endColumnIndex: 11, // A to K columns
+                endColumnIndex: 13, // A to M columns
               ),
               cell: sheets.CellData(
                 userEnteredFormat: sheets.CellFormat(
@@ -303,7 +319,7 @@ class GoogleSheetsService {
 
       // Add missing headers if they don't exist
       final headerValues = [
-        ['user_name', 'user_class', 'device_info', 'scan_status']
+        ['user_name', 'user_class', 'user_device', 'user_brand', 'device_info', 'scan_status']
       ];
 
       final valueRange = sheets.ValueRange(
@@ -313,7 +329,7 @@ class GoogleSheetsService {
       await _sheetsApi!.spreadsheets.values.update(
         valueRange,
         spreadsheetId,
-        'Scan Logs!G1:K1',
+        'Scan Logs!G1:M1',
         valueInputOption: 'RAW',
       );
 
@@ -363,7 +379,7 @@ class GoogleSheetsService {
       // Get all existing data
       final currentData = await _sheetsApi!.spreadsheets.values.get(
         spreadsheetId,
-        'Scan Logs!A:K',
+        'Scan Logs!A:M',
       );
 
       if (currentData.values == null || currentData.values!.length <= 1) {
@@ -410,7 +426,7 @@ class GoogleSheetsService {
                   startRowIndex: i,
                   endRowIndex: i + 1,
                   startColumnIndex: 0,
-                  endColumnIndex: 11, // A to K columns
+                  endColumnIndex: 13, // A to M columns
                 ),
                 cell: sheets.CellData(
                   userEnteredFormat: sheets.CellFormat(
@@ -446,7 +462,7 @@ class GoogleSheetsService {
         await _sheetsApi!.spreadsheets.values.update(
           sheets.ValueRange(values: statusUpdates),
           spreadsheetId,
-          'Scan Logs!K2:K${values.length}',
+          'Scan Logs!M2:M${values.length}',
           valueInputOption: 'RAW',
         );
       }

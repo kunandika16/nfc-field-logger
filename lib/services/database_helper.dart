@@ -20,7 +20,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'scan_logs.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -38,6 +38,8 @@ class DatabaseHelper {
         city TEXT,
         user_name TEXT,
         user_class TEXT,
+        user_device TEXT,
+        user_brand TEXT,
         device_info TEXT,
         isSynced INTEGER DEFAULT 0,
         isLateScanning INTEGER DEFAULT 0
@@ -66,6 +68,17 @@ class DatabaseHelper {
       final names = existingColumns.map((e) => e['name']).toSet();
       if (!names.contains('isLateScanning')) {
         await db.execute('ALTER TABLE scan_logs ADD COLUMN isLateScanning INTEGER DEFAULT 0');
+      }
+    }
+    if (oldVersion < 4) {
+      // Add user_device and user_brand columns
+      final existingColumns = await db.rawQuery('PRAGMA table_info(scan_logs)');
+      final names = existingColumns.map((e) => e['name']).toSet();
+      if (!names.contains('user_device')) {
+        await db.execute('ALTER TABLE scan_logs ADD COLUMN user_device TEXT');
+      }
+      if (!names.contains('user_brand')) {
+        await db.execute('ALTER TABLE scan_logs ADD COLUMN user_brand TEXT');
       }
     }
   }
